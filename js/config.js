@@ -5,7 +5,7 @@
 // Supabase credentials
 // Dapatkan dari: Supabase Dashboard > Project Settings > API
 const SUPABASE_URL = 'https://ftuxnxrbydnfrpdyisht.supabase.co';
-const SUPABASE_ANON_KEY = 'https://ftuxnxrbydnfrpdyisht.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0dXhueHJieWRuZnJwZHlpc2h0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0NjkzNTIsImV4cCI6MjA5ODA0NTM1Mn0.qK-9J90EoHO_c1VsU5BZ_KV4QbeoFP_1qRK-QMfCGnE';
 
 // Nomor WhatsApp admin (format: 62xxxxxxxxx, tanpa + atau spasi)
 const ADMIN_WHATSAPP = '62881025030603';
