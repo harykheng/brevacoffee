@@ -6,6 +6,7 @@
 let adminProducts    = [];
 let editingProductId = null;
 let selectedFile     = null;
+let selectedLogoFile = null;
 let confirmCallback  = null;
 
 // ---- HELPERS ----
@@ -358,6 +359,111 @@ function closeConfirm() {
   document.getElementById('confirmOverlay').classList.remove('active');
   document.body.style.overflow = '';
   confirmCallback = null;
+}
+
+// ================================================================
+// TABS
+// ================================================================
+
+function switchTab(tab) {
+  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => { p.style.display = 'none'; });
+  document.querySelector(`.admin-tab[data-tab="${tab}"]`).classList.add('active');
+  document.getElementById(`tab-${tab}`).style.display = '';
+  if (tab === 'settings') loadSettings();
+}
+
+// ================================================================
+// SETTINGS
+// ================================================================
+
+async function loadSettings() {
+  try {
+    const { data, error } = await supabaseClient
+      .from('settings').select('*').eq('id', 1).single();
+    if (error || !data) return;
+
+    document.getElementById('settingBrandName').value   = data.brand_name      || '';
+    document.getElementById('settingBrandIcon').value   = data.brand_icon      || '☕';
+    document.getElementById('settingBannerTitle').value = data.banner_title    || '';
+    document.getElementById('settingBannerSub').value   = data.banner_subtitle || '';
+    document.getElementById('existingLogoUrl').value    = data.logo_url        || '';
+
+    if (data.logo_url) showLogoPreview(data.logo_url);
+  } catch (err) {
+    console.error('Load settings failed:', err);
+  }
+}
+
+async function saveSettings(event) {
+  event.preventDefault();
+  const btn = document.getElementById('saveSettingsBtn');
+  btn.textContent = 'Menyimpan...';
+  btn.disabled    = true;
+
+  try {
+    const brand_name      = document.getElementById('settingBrandName').value.trim();
+    const brand_icon      = document.getElementById('settingBrandIcon').value.trim() || '☕';
+    const banner_title    = document.getElementById('settingBannerTitle').value.trim();
+    const banner_subtitle = document.getElementById('settingBannerSub').value.trim();
+    let   logo_url        = document.getElementById('existingLogoUrl').value || null;
+
+    if (selectedLogoFile) {
+      const ext      = selectedLogoFile.name.split('.').pop().toLowerCase();
+      const fileName = `logo-${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabaseClient.storage
+        .from('product-images').upload(fileName, selectedLogoFile, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabaseClient.storage
+        .from('product-images').getPublicUrl(fileName);
+      logo_url = urlData.publicUrl;
+    }
+
+    const { error } = await supabaseClient.from('settings').upsert({
+      id: 1, brand_name, brand_icon, logo_url, banner_title, banner_subtitle,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) throw error;
+
+    document.getElementById('existingLogoUrl').value = logo_url || '';
+    selectedLogoFile = null;
+    showToast('Pengaturan berhasil disimpan! ✅', 'success');
+
+  } catch (err) {
+    console.error('Save settings error:', err);
+    showToast('Gagal menyimpan: ' + (err.message || 'Coba lagi'), 'error');
+  } finally {
+    btn.textContent = 'Simpan Pengaturan';
+    btn.disabled    = false;
+  }
+}
+
+function handleLogoSelect(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) {
+    showToast('Ukuran logo maks 2 MB ya!', 'error');
+    e.target.value = '';
+    return;
+  }
+  selectedLogoFile = file;
+  showLogoPreview(URL.createObjectURL(file));
+}
+
+function showLogoPreview(url) {
+  document.getElementById('logoUploadPrompt').style.display = 'none';
+  document.getElementById('logoPreviewWrap').style.display  = 'block';
+  document.getElementById('logoPreviewImg').src             = url;
+}
+
+function removeLogo(e) {
+  e.stopPropagation();
+  selectedLogoFile = null;
+  document.getElementById('existingLogoUrl').value          = '';
+  document.getElementById('logoInput').value                = '';
+  document.getElementById('logoUploadPrompt').style.display = '';
+  document.getElementById('logoPreviewWrap').style.display  = 'none';
+  document.getElementById('logoPreviewImg').src             = '';
 }
 
 // ---- MODAL OVERLAY CLICKS ----

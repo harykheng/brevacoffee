@@ -9,6 +9,7 @@ let selectedDateLabel = null;   // human-readable label
 let products          = [];
 let cart              = {};
 let productsLoaded    = false;
+let appSettings       = null;   // loaded from settings table
 
 // ---- HELPERS ----
 const DAYS   = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
@@ -36,6 +37,39 @@ function showToast(msg, type = 'info') {
     t.classList.add('toast-out');
     t.addEventListener('animationend', () => t.remove(), { once: true });
   }, 3200);
+}
+
+// ================================================================
+// SETTINGS
+// ================================================================
+
+async function loadSettings() {
+  try {
+    const { data } = await supabaseClient
+      .from('settings').select('*').eq('id', 1).single();
+    if (data) { appSettings = data; applyBrandSettings(); }
+  } catch (_) {
+    // settings table not created yet — use config.js defaults silently
+  }
+}
+
+function applyBrandSettings() {
+  if (!appSettings) return;
+
+  const name = appSettings.brand_name || STORE_NAME;
+  document.querySelectorAll('.brand-name-text').forEach(el => el.textContent = name);
+  document.title = name;
+
+  if (appSettings.logo_url) {
+    document.querySelectorAll('.brand-icon-logo').forEach(el => {
+      el.src = appSettings.logo_url;
+      el.alt = name;
+      el.style.display = '';
+    });
+    document.querySelectorAll('.brand-icon-emoji').forEach(el => el.style.display = 'none');
+  } else if (appSettings.brand_icon) {
+    document.querySelectorAll('.brand-icon-emoji').forEach(el => el.textContent = appSettings.brand_icon);
+  }
 }
 
 // ================================================================
@@ -120,9 +154,9 @@ function goToStep2() {
   document.getElementById('oisType').textContent = orderType === 'pickup' ? '🏠 Pickup' : '🛵 Delivery';
   document.getElementById('oisDate').textContent  = selectedDateLabel;
 
-  // Populate banner
-  document.getElementById('bannerTitle').textContent = BANNER_TITLE;
-  document.getElementById('bannerSub').textContent   = BANNER_SUBTITLE;
+  // Populate banner (use DB settings if loaded, else config.js defaults)
+  document.getElementById('bannerTitle').textContent = appSettings?.banner_title    || BANNER_TITLE;
+  document.getElementById('bannerSub').textContent   = appSettings?.banner_subtitle || BANNER_SUBTITLE;
 
   // Switch step
   document.getElementById('step1').classList.remove('active');
@@ -408,6 +442,7 @@ function submitOrder() {
 
 document.addEventListener('DOMContentLoaded', () => {
   renderDateChips();
+  loadSettings();
 
   // WA help buttons
   const waMsg = `Halo ${STORE_NAME}, saya butuh bantuan untuk pemesanan!`;

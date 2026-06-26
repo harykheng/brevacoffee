@@ -60,31 +60,106 @@
     <!-- Admin Main -->
     <main class="admin-main">
 
-      <div class="admin-page-header">
-        <div>
-          <h2 class="admin-page-title">Daftar Produk</h2>
-          <p class="admin-page-subtitle" id="productCount">Memuat...</p>
+      <!-- Tab navigation -->
+      <div class="admin-tabs">
+        <button class="admin-tab active" data-tab="products" onclick="switchTab('products')">🛍 Produk</button>
+        <button class="admin-tab" data-tab="settings" onclick="switchTab('settings')">⚙️ Pengaturan</button>
+      </div>
+
+      <!-- Tab: Produk -->
+      <div id="tab-products" class="tab-panel">
+        <div class="admin-page-header">
+          <div>
+            <h2 class="admin-page-title">Daftar Produk</h2>
+            <p class="admin-page-subtitle" id="productCount">Memuat...</p>
+          </div>
+          <button class="btn btn-primary" onclick="openProductForm()">
+            + Tambah Produk
+          </button>
         </div>
-        <button class="btn btn-primary" onclick="openProductForm()">
-          + Tambah Produk
-        </button>
+
+        <div id="adminLoadingState" class="loading-state" style="grid-column:1/-1; display:flex">
+          <div class="spinner"></div>
+          <span>Memuat produk...</span>
+        </div>
+
+        <div class="empty-admin-state" id="emptyAdminState">
+          <span class="empty-admin-icon">📦</span>
+          <h3>Belum ada produk</h3>
+          <p>Mulai tambahkan produk pertamamu!</p>
+        </div>
+
+        <div class="products-admin-grid" id="adminProductsGrid"></div>
       </div>
 
-      <!-- Loading state (managed by JS) -->
-      <div id="adminLoadingState" class="loading-state" style="grid-column:1/-1; display:flex">
-        <div class="spinner"></div>
-        <span>Memuat produk...</span>
-      </div>
+      <!-- Tab: Pengaturan -->
+      <div id="tab-settings" class="tab-panel" style="display:none">
+        <div class="admin-page-header">
+          <div>
+            <h2 class="admin-page-title">Pengaturan</h2>
+            <p class="admin-page-subtitle">Tampilan website &amp; brand</p>
+          </div>
+        </div>
 
-      <!-- Empty state -->
-      <div class="empty-admin-state" id="emptyAdminState">
-        <span class="empty-admin-icon">📦</span>
-        <h3>Belum ada produk</h3>
-        <p>Mulai tambahkan produk pertamamu!</p>
-      </div>
+        <form id="settingsForm" onsubmit="saveSettings(event)" class="settings-form" novalidate>
+          <input type="hidden" id="existingLogoUrl">
 
-      <!-- Products grid -->
-      <div class="products-admin-grid" id="adminProductsGrid"></div>
+          <!-- Brand -->
+          <div class="settings-section">
+            <div class="settings-section-title">Brand</div>
+
+            <div class="form-group">
+              <label for="settingBrandName">Nama Brand</label>
+              <input type="text" id="settingBrandName" placeholder="Breva Coffee" maxlength="40">
+            </div>
+
+            <div class="form-group">
+              <label for="settingBrandIcon">Ikon / Emoji</label>
+              <input type="text" id="settingBrandIcon" placeholder="☕" maxlength="4" style="max-width:90px">
+              <p class="form-hint">Tampil di header kalau tidak ada logo gambar</p>
+            </div>
+
+            <div class="form-group" style="margin-bottom:0">
+              <label>Logo (Gambar — opsional)</label>
+              <div class="image-upload-area" id="logoUploadArea">
+                <input type="file" class="image-upload-input" id="logoInput"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  onchange="handleLogoSelect(event)">
+                <div id="logoUploadPrompt">
+                  <span class="image-upload-icon">🖼️</span>
+                  <div class="image-upload-text">Klik atau seret logo ke sini</div>
+                  <div class="image-upload-sub">PNG, JPG, WEBP, SVG — Maks 2 MB</div>
+                </div>
+                <div id="logoPreviewWrap" style="display:none">
+                  <div class="image-preview-wrap">
+                    <img id="logoPreviewImg" src="" alt="Logo preview">
+                    <button type="button" class="image-remove-btn" onclick="removeLogo(event)" aria-label="Hapus logo">✕</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Banner Katalog -->
+          <div class="settings-section">
+            <div class="settings-section-title">Banner Katalog</div>
+
+            <div class="form-group">
+              <label for="settingBannerTitle">Judul Banner</label>
+              <input type="text" id="settingBannerTitle" placeholder="Ada yang baru nih! ✨">
+            </div>
+
+            <div class="form-group" style="margin-bottom:0">
+              <label for="settingBannerSub">Subjudul Banner</label>
+              <input type="text" id="settingBannerSub" placeholder="Cek semua menu terbaru Breva Coffee">
+            </div>
+          </div>
+
+          <div class="form-actions settings-actions">
+            <button type="submit" class="btn btn-primary" id="saveSettingsBtn">Simpan Pengaturan</button>
+          </div>
+        </form>
+      </div>
 
     </main>
   </div>
