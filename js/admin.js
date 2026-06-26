@@ -400,8 +400,10 @@ async function loadSettings() {
     document.getElementById('settingStoreMapsUrl').value = data.store_maps_url   || '';
     document.getElementById('settingBannerTitle').value  = data.banner_title     || '';
     document.getElementById('settingBannerSub').value    = data.banner_subtitle  || '';
-    document.getElementById('existingLogoUrl').value     = data.logo_url         || '';
+    document.getElementById('existingLogoUrl').value        = data.logo_url         || '';
     document.getElementById('existingBannerImageUrl').value = data.banner_image_url || '';
+    document.getElementById('settingInstagramUrl').value    = data.instagram_url    || '';
+    document.getElementById('settingTiktokUrl').value       = data.tiktok_url       || '';
 
     if (data.logo_url)         showLogoPreview(data.logo_url);
     if (data.banner_image_url) showBannerImagePreview(data.banner_image_url);
@@ -424,6 +426,8 @@ async function saveSettings(event) {
     const store_maps_url  = document.getElementById('settingStoreMapsUrl').value.trim() || null;
     const banner_title    = document.getElementById('settingBannerTitle').value.trim();
     const banner_subtitle = document.getElementById('settingBannerSub').value.trim();
+    const instagram_url   = document.getElementById('settingInstagramUrl').value.trim() || null;
+    const tiktok_url      = document.getElementById('settingTiktokUrl').value.trim()    || null;
     let   logo_url        = document.getElementById('existingLogoUrl').value || null;
     let   banner_image_url = document.getElementById('existingBannerImageUrl').value || null;
 
@@ -453,6 +457,7 @@ async function saveSettings(event) {
       id: 1, brand_name, brand_icon, logo_url,
       store_address, store_hours, store_maps_url,
       banner_title, banner_subtitle, banner_image_url,
+      instagram_url, tiktok_url,
       updated_at: new Date().toISOString(),
     });
     if (error) throw error;

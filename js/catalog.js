@@ -76,6 +76,12 @@ function applyBrandSettings() {
     const bgImg = document.getElementById('bannerBgImg');
     if (bgImg) { bgImg.src = appSettings.banner_image_url; bgImg.style.display = ''; }
   }
+
+  // Social media links
+  if (appSettings.instagram_url)
+    document.querySelectorAll('.footer-ig').forEach(el => { el.href = appSettings.instagram_url; });
+  if (appSettings.tiktok_url)
+    document.querySelectorAll('.footer-tt').forEach(el => { el.href = appSettings.tiktok_url; });
 }
 
 // ================================================================
@@ -458,7 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btn1) btn1.href = waUrl;
   if (btn2) btn2.href = waUrl;
 
-  // Social media footer links
-  document.querySelectorAll('.footer-ig').forEach(el => { el.href = INSTAGRAM_URL; });
-  document.querySelectorAll('.footer-tt').forEach(el => { el.href = TIKTOK_URL; });
+  // Social media footer links (DB settings override config.js defaults)
+  document.querySelectorAll('.footer-ig').forEach(el => { el.href = appSettings?.instagram_url || INSTAGRAM_URL; });
+  document.querySelectorAll('.footer-tt').forEach(el => { el.href = appSettings?.tiktok_url    || TIKTOK_URL; });
 });
