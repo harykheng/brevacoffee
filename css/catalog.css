@@ -14,7 +14,7 @@
   background: var(--white);
   display: flex;
   flex-direction: column;
-  padding: 0;
+  padding: 0 0 calc(88px + env(safe-area-inset-bottom));
   max-width: 480px;
   margin: 0 auto;
 }
@@ -205,7 +205,18 @@
 .date-chip.chip-tomorrow { min-width: 80px; }
 
 /* ---- STEP 1 CTA ---- */
-.ob-footer { margin-top: 24px; padding: 0 20px; }
+.ob-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 12px 20px calc(14px + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-top: 1px solid var(--border);
+  z-index: 50;
+}
 
 .btn-next {
   width: 100%;
