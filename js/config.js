@@ -4,11 +4,11 @@
 
 // Supabase credentials
 // Dapatkan dari: Supabase Dashboard > Project Settings > API
-const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY_HERE';
+const SUPABASE_URL = 'https://ftuxnxrbydnfrpdyisht.supabase.co';
+const SUPABASE_ANON_KEY = 'https://ftuxnxrbydnfrpdyisht.supabase.co';
 
 // Nomor WhatsApp admin (format: 62xxxxxxxxx, tanpa + atau spasi)
-const ADMIN_WHATSAPP = '6281234567890';
+const ADMIN_WHATSAPP = '62881025030603';
 
 // Nama toko (tampil di pesan WhatsApp)
 const STORE_NAME = 'Breva Coffee';
