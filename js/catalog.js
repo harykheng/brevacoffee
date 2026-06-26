@@ -166,7 +166,7 @@ async function loadProducts() {
     if (!products.length) {
       grid.innerHTML = `
         <div class="catalog-empty">
-          <img src="images/mascot-surprised.jpeg" alt="" class="mascot-img catalog-state-mascot" aria-hidden="true">
+          <span class="catalog-empty-icon">☕</span>
           <h3>Menu segera hadir!</h3>
           <p>Produk sedang kami siapkan.</p>
         </div>`;
@@ -179,7 +179,7 @@ async function loadProducts() {
     console.error(err);
     grid.innerHTML = `
       <div class="catalog-error">
-        <img src="images/mascot-surprised.jpeg" alt="" class="mascot-img catalog-state-mascot" aria-hidden="true">
+        <span class="catalog-error-icon">😔</span>
         <h3>Gagal memuat menu</h3>
         <p>Coba refresh halaman ini ya!</p>
       </div>`;
@@ -409,11 +409,15 @@ function submitOrder() {
 document.addEventListener('DOMContentLoaded', () => {
   renderDateChips();
 
-  // Wire up WA help buttons with pre-filled message
+  // WA help buttons
   const waMsg = `Halo ${STORE_NAME}, saya butuh bantuan untuk pemesanan!`;
   const waUrl = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(waMsg)}`;
   const btn1  = document.getElementById('waHelpBtn1');
   const btn2  = document.getElementById('waHelpBtn2');
   if (btn1) btn1.href = waUrl;
   if (btn2) btn2.href = waUrl;
+
+  // Social media footer links
+  document.querySelectorAll('.footer-ig').forEach(el => { el.href = INSTAGRAM_URL; });
+  document.querySelectorAll('.footer-tt').forEach(el => { el.href = TIKTOK_URL; });
 });

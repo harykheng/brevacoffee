@@ -22,6 +22,10 @@ const STORE_OPEN_HOURS = 'Senin – Minggu, 08.00 – 21.00 WIB';
 const BANNER_TITLE    = 'Ada yang baru nih! ✨';
 const BANNER_SUBTITLE = 'Cek semua menu terbaru Breva Coffee';
 
+// Social media (isi dengan URL akun kamu)
+const INSTAGRAM_URL = 'https://instagram.com/brevacoffee';
+const TIKTOK_URL    = 'https://tiktok.com/@brevacoffee';
+
 // ================================================
 // INIT SUPABASE CLIENT
 // ================================================
