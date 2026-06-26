@@ -16,23 +16,28 @@
 </head>
 <body>
 
-  <!-- ===================================================
+  <!-- ==============================================
        STEP 1 — PILIH PICKUP / DELIVERY + TANGGAL
-       =================================================== -->
+       ============================================== -->
   <div id="step1" class="step active">
     <div class="onboarding">
 
-      <!-- Brand -->
-      <div class="ob-brand">
-        <span class="ob-brand-icon">☕</span>
-        <span class="ob-brand-name">Breva Coffee</span>
+      <!-- Top bar: brand + WA help -->
+      <div class="ob-topbar">
+        <div class="ob-brand">
+          <span class="ob-brand-icon">☕</span>
+          <span class="ob-brand-name">Breva Coffee</span>
+        </div>
+        <a class="btn-wa-help" id="waHelpBtn1" href="#" target="_blank" rel="noopener noreferrer">
+          💬 Butuh bantuan?
+        </a>
       </div>
 
       <!-- Headline -->
       <h1 class="ob-headline">Mau pickup<br>atau delivery?</h1>
       <p class="ob-sub">Pilih dulu, baru lihat menu 👇</p>
 
-      <!-- Order Type Cards -->
+      <!-- Order type cards -->
       <div class="order-type-grid">
         <div class="order-type-card" data-type="pickup" onclick="selectOrderType(this)">
           <span class="order-type-icon">🏠</span>
@@ -46,7 +51,7 @@
         </div>
       </div>
 
-      <!-- Pickup Address (shown when pickup selected) -->
+      <!-- Pickup address info (shown if pickup) -->
       <div class="pickup-address-card" id="pickupAddressCard">
         <span class="pickup-pin">📍</span>
         <div>
@@ -60,9 +65,9 @@
         </div>
       </div>
 
-      <!-- Date Selection (shown after order type selected) -->
+      <!-- Date selection -->
       <div class="date-section" id="dateSection">
-        <div class="date-section-label" id="dateSectionLabel">Pilih Tanggal Pickup</div>
+        <div class="date-section-label" id="dateSectionLabel">Pilih Tanggal</div>
         <div class="date-chips-wrap" id="dateChips"></div>
       </div>
 
@@ -76,23 +81,47 @@
     </div>
   </div>
 
-  <!-- ===================================================
+  <!-- ==============================================
        STEP 2 — KATALOG PRODUK
-       =================================================== -->
+       ============================================== -->
   <div id="step2" class="step">
 
-    <!-- Sticky topbar -->
-    <div class="catalog-topbar">
+    <!-- Topbar -->
+    <header class="catalog-topbar">
       <button class="topbar-back" onclick="goBack()" aria-label="Kembali">←</button>
-      <div class="topbar-info">
-        <div class="topbar-type" id="topbarType">Pickup</div>
-        <div class="topbar-date" id="topbarDate">Pilih tanggal...</div>
+      <div class="topbar-center">
+        <span class="topbar-icon">☕</span>
+        <span class="topbar-brand-name">Breva Coffee</span>
+      </div>
+      <a class="btn-wa-icon" id="waHelpBtn2" href="#" target="_blank" rel="noopener noreferrer" aria-label="Butuh bantuan?">
+        💬
+      </a>
+    </header>
+
+    <!-- Order info strip -->
+    <div class="order-info-strip">
+      <div class="ois-left">
+        <span class="ois-pill" id="oisType">🏠 Pickup</span>
+        <span class="ois-sep">·</span>
+        <span class="ois-date" id="oisDate">-</span>
+      </div>
+      <button class="ois-change" onclick="goBack()">Ubah</button>
+    </div>
+
+    <!-- Banner -->
+    <div class="catalog-banner">
+      <div class="banner-inner">
+        <div class="banner-texts">
+          <div class="banner-title" id="bannerTitle"></div>
+          <div class="banner-sub" id="bannerSub"></div>
+        </div>
+        <div class="banner-deco">☕</div>
       </div>
     </div>
 
     <!-- Products -->
     <main class="products-section">
-      <div class="section-title">Menu Kami</div>
+      <div class="section-label">Menu Kami</div>
       <div class="products-grid" id="productsGrid">
         <div class="loading-state">
           <div class="spinner"></div>
@@ -101,92 +130,127 @@
       </div>
     </main>
 
-  </div>
-
-  <!-- ===================================================
-       FLOATING CART (step 2 only)
-       =================================================== -->
-  <div class="floating-cart" id="floatingCart" style="display:none">
-    <button class="cart-toggle-btn" onclick="toggleCart()" aria-label="Buka keranjang">
-      🛒
-      <span class="cart-badge hidden" id="cartBadge">0</span>
-    </button>
-  </div>
-
-  <!-- ===================================================
-       CART OVERLAY + PANEL
-       =================================================== -->
-  <div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
-
-  <div class="cart-panel" id="cartPanel">
-    <div class="drag-handle"></div>
-    <div class="cart-panel-header">
-      <h3>Keranjang 🛒</h3>
-      <button class="modal-close" onclick="toggleCart()">✕</button>
-    </div>
-    <div class="cart-items-list" id="cartItemsList"></div>
-    <div class="cart-panel-footer">
-      <div class="cart-total-row">
-        <span class="cart-total-label">Total</span>
-        <span class="cart-total-amount" id="cartTotalAmount">Rp 0</span>
+    <!-- Sticky footer (cart summary) -->
+    <div class="catalog-sticky-footer" id="catalogFooter">
+      <div class="csf-left">
+        <div class="csf-icon">🛒</div>
+        <div class="csf-info">
+          <div class="csf-qty"  id="csfQty">0 item</div>
+          <div class="csf-total" id="csfTotal">Rp 0</div>
+        </div>
       </div>
-      <button class="btn-checkout-main" id="checkoutBtn" onclick="openCheckout()" disabled>
-        Checkout via WhatsApp 📱
-      </button>
+      <button class="csf-cta" onclick="goToStep3()">Lanjutkan →</button>
     </div>
+
   </div>
 
-  <!-- ===================================================
-       CHECKOUT MODAL
-       =================================================== -->
-  <div class="modal-overlay" id="checkoutModal">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h3>Detail Pesanan</h3>
-        <button class="modal-close" onclick="closeCheckout()">✕</button>
+  <!-- ==============================================
+       STEP 3 — DETAIL & CHECKOUT
+       ============================================== -->
+  <div id="step3" class="step">
+
+    <!-- Topbar -->
+    <header class="catalog-topbar">
+      <button class="topbar-back" onclick="goBackFromCheckout()" aria-label="Kembali">←</button>
+      <div class="topbar-center">
+        <span class="topbar-brand-name" style="font-size:15px">Detail Pesanan</span>
       </div>
+      <div style="width:36px"></div>
+    </header>
 
-      <!-- Order meta + summary -->
-      <div class="order-summary" id="orderSummary"></div>
+    <div class="checkout-body">
 
-      <!-- Form -->
-      <form id="checkoutForm" onsubmit="submitOrder(event)" novalidate>
-        <div class="form-group">
-          <label for="customerName">Nama Pemesan</label>
-          <input type="text" id="customerName" placeholder="Nama kamu..." required autocomplete="name">
+      <!-- Section: Detail pengiriman -->
+      <div class="co-section">
+        <div class="co-section-title">Detail Pengiriman</div>
+
+        <div class="co-meta-card">
+          <div class="co-meta-row">
+            <span class="co-meta-icon">📅</span>
+            <div>
+              <div class="co-meta-label">Tanggal</div>
+              <div class="co-meta-value" id="coDate">-</div>
+            </div>
+          </div>
+          <div class="co-meta-divider"></div>
+          <div class="co-meta-row">
+            <span class="co-meta-icon" id="coTypeIcon">🏠</span>
+            <div>
+              <div class="co-meta-label">Tipe Pesanan</div>
+              <div class="co-meta-value" id="coTypeValue">-</div>
+            </div>
+          </div>
         </div>
 
+        <!-- Pickup: tampilkan alamat toko -->
+        <div class="co-pickup-card" id="coPickupCard" style="display:none">
+          <div class="co-meta-row">
+            <span class="co-meta-icon">📍</span>
+            <div>
+              <div class="co-meta-label">Lokasi Pickup</div>
+              <div class="co-meta-value">Breva Coffee</div>
+              <div class="co-pickup-addr" id="coPickupAddr"></div>
+              <a class="pickup-maps-link" id="coMapsLink" href="#" target="_blank" rel="noopener" style="margin-top:8px;display:inline-flex">
+                Buka di Google Maps →
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Delivery: input alamat customer -->
+        <div id="coDeliveryInput" style="display:none">
+          <div class="form-group" style="margin-top:14px;margin-bottom:0">
+            <label for="customerAddress">Alamat Pengiriman *</label>
+            <textarea id="customerAddress" placeholder="Tulis alamat lengkap + patokan..." rows="3"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Info pemesan -->
+      <div class="co-section">
+        <div class="co-section-title">Info Pemesan</div>
         <div class="form-group">
+          <label for="customerName">Nama</label>
+          <input type="text" id="customerName" placeholder="Nama kamu..." required autocomplete="name">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
           <label for="customerWA">Nomor WhatsApp</label>
           <input type="tel" id="customerWA" placeholder="08xxxxxxxxxx" required autocomplete="tel">
         </div>
+      </div>
 
-        <!-- Delivery address (shown only for delivery) -->
-        <div class="form-group" id="addressGroup" style="display:none">
-          <label for="customerAddress">Alamat Pengiriman</label>
-          <textarea id="customerAddress" placeholder="Tulis alamat lengkap di sini..." rows="3"></textarea>
+      <!-- Section: Daftar pesanan -->
+      <div class="co-section">
+        <div class="co-section-title">Pesananmu</div>
+        <div id="coItemsList"></div>
+        <div class="co-total-row">
+          <span class="co-total-label">Total</span>
+          <span class="co-total-amount" id="coTotalAmount">Rp 0</span>
         </div>
+      </div>
 
-        <div class="form-group">
+      <!-- Section: Catatan -->
+      <div class="co-section">
+        <div class="form-group" style="margin-bottom:0">
           <label for="customerNote">Catatan (Opsional)</label>
-          <textarea id="customerNote" placeholder="Ada pesan khusus?" rows="2"></textarea>
+          <textarea id="customerNote" placeholder="Ada permintaan khusus?" rows="2"></textarea>
         </div>
+      </div>
 
-        <button type="submit" class="btn btn-primary btn-wa-submit">
-          Kirim Pesanan via WhatsApp 📱
+      <!-- Submit -->
+      <div class="co-submit">
+        <button class="btn-wa-send" onclick="submitOrder()">
+          Kirim via WhatsApp 📱
         </button>
-      </form>
+      </div>
+
     </div>
   </div>
 
-  <!-- ===================================================
-       TOAST CONTAINER
-       =================================================== -->
+  <!-- TOAST -->
   <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
-  <!-- ===================================================
-       SCRIPTS
-       =================================================== -->
+  <!-- SCRIPTS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
   <script src="js/catalog.js"></script>

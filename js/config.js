@@ -18,6 +18,10 @@ const STORE_ADDRESS    = 'Alam Sutera, Jl. Jalur Sutera Bar. No.Kav.19B, RT.002/
 const STORE_MAPS_URL   = 'https://share.google/0wIemWDWjEzPHAI8p';
 const STORE_OPEN_HOURS = 'Senin – Minggu, 08.00 – 21.00 WIB';
 
+// Teks banner di halaman katalog
+const BANNER_TITLE    = 'Ada yang baru nih! ✨';
+const BANNER_SUBTITLE = 'Cek semua menu terbaru Breva Coffee';
+
 // ================================================
 // INIT SUPABASE CLIENT
 // ================================================

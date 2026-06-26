@@ -1,15 +1,14 @@
 // ================================================
-// BREVA COFFEE — CATALOG PAGE
+// BREVA COFFEE — CATALOG PAGE (3-step flow)
 // ================================================
 
 // ---- STATE ----
-let orderType        = null;   // 'pickup' | 'delivery'
-let selectedDate     = null;   // 'YYYY-MM-DD'
-let selectedDateLabel = null;  // human-readable label
-let products         = [];
-let cart             = {};
-let cartOpen         = false;
-let productsLoaded   = false;
+let orderType         = null;   // 'pickup' | 'delivery'
+let selectedDate      = null;   // 'YYYY-MM-DD'
+let selectedDateLabel = null;   // human-readable label
+let products          = [];
+let cart              = {};
+let productsLoaded    = false;
 
 // ---- HELPERS ----
 const DAYS   = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
@@ -44,59 +43,52 @@ function showToast(msg, type = 'info') {
 // ================================================================
 
 function selectOrderType(card) {
-  // Deselect all
   document.querySelectorAll('.order-type-card').forEach(c => c.classList.remove('selected'));
   card.classList.add('selected');
   orderType = card.dataset.type;
 
-  // Show/hide pickup address
   const addrCard = document.getElementById('pickupAddressCard');
   if (orderType === 'pickup') {
-    document.getElementById('pickupAddr').textContent    = STORE_ADDRESS;
-    document.getElementById('pickupHours').textContent   = STORE_OPEN_HOURS;
-    document.getElementById('pickupMapsLink').href       = STORE_MAPS_URL;
+    document.getElementById('pickupAddr').textContent  = STORE_ADDRESS;
+    document.getElementById('pickupHours').textContent = STORE_OPEN_HOURS;
+    document.getElementById('pickupMapsLink').href     = STORE_MAPS_URL;
     addrCard.classList.add('visible');
   } else {
     addrCard.classList.remove('visible');
   }
 
-  // Show date section with correct label
-  const dateSection = document.getElementById('dateSection');
   document.getElementById('dateSectionLabel').textContent =
     orderType === 'pickup' ? 'Pilih Tanggal Pickup' : 'Pilih Tanggal Delivery';
-  dateSection.classList.add('visible');
+  document.getElementById('dateSection').classList.add('visible');
 
   checkStep1Ready();
 }
 
 function renderDateChips() {
-  const wrap = document.getElementById('dateChips');
+  const wrap  = document.getElementById('dateChips');
   wrap.innerHTML = '';
   const today = new Date();
 
   for (let i = 0; i < 7; i++) {
-    const d = new Date(today);
+    const d       = new Date(today);
     d.setDate(today.getDate() + i);
-
-    const chip = document.createElement('div');
     const dateStr = d.toISOString().split('T')[0];
+    const chip    = document.createElement('div');
 
     if (i === 0 || i === 1) {
       const label = i === 0 ? 'Hari ini' : 'Besok';
-      chip.className = `date-chip ${i === 0 ? 'chip-today' : 'chip-tomorrow'}`;
+      chip.className     = `date-chip ${i === 0 ? 'chip-today' : 'chip-tomorrow'}`;
       chip.dataset.label = `${label}, ${d.getDate()} ${MONTHS[d.getMonth()]}`;
       chip.innerHTML = `
         <span class="dc-label">${label}</span>
-        <span class="dc-sublabel">${d.getDate()} ${MONTHS[d.getMonth()]}</span>
-      `;
+        <span class="dc-sublabel">${d.getDate()} ${MONTHS[d.getMonth()]}</span>`;
     } else {
-      chip.className = 'date-chip';
+      chip.className     = 'date-chip';
       chip.dataset.label = `${DAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]}`;
       chip.innerHTML = `
         <span class="dc-day">${DAYS[d.getDay()]}</span>
         <span class="dc-date">${d.getDate()}</span>
-        <span class="dc-month">${MONTHS[d.getMonth()]}</span>
-      `;
+        <span class="dc-month">${MONTHS[d.getMonth()]}</span>`;
     }
 
     chip.dataset.value = dateStr;
@@ -124,37 +116,30 @@ function checkStep1Ready() {
 function goToStep2() {
   if (!orderType || !selectedDate) return;
 
-  // Update topbar
-  document.getElementById('topbarType').textContent =
-    orderType === 'pickup' ? '🏠 Pickup' : '🛵 Delivery';
-  document.getElementById('topbarDate').textContent = selectedDateLabel;
+  // Populate order info strip
+  document.getElementById('oisType').textContent = orderType === 'pickup' ? '🏠 Pickup' : '🛵 Delivery';
+  document.getElementById('oisDate').textContent  = selectedDateLabel;
 
-  // Show address field only for delivery
-  document.getElementById('addressGroup').style.display =
-    orderType === 'delivery' ? 'block' : 'none';
+  // Populate banner
+  document.getElementById('bannerTitle').textContent = BANNER_TITLE;
+  document.getElementById('bannerSub').textContent   = BANNER_SUBTITLE;
 
   // Switch step
   document.getElementById('step1').classList.remove('active');
   document.getElementById('step2').classList.add('active');
-  document.getElementById('floatingCart').style.display = 'block';
-
   window.scrollTo(0, 0);
 
-  // Load products once
   if (!productsLoaded) {
     loadProducts();
     productsLoaded = true;
   }
+
+  syncStickyFooter();
 }
 
 function goBack() {
   document.getElementById('step2').classList.remove('active');
   document.getElementById('step1').classList.add('active');
-  document.getElementById('floatingCart').style.display = 'none';
-
-  // Close cart if open
-  if (cartOpen) toggleCart();
-
   window.scrollTo(0, 0);
 }
 
@@ -215,7 +200,7 @@ function buildProductCard(product, index) {
 
   const imgHTML = product.image_url
     ? `<img src="${escapeHTML(product.image_url)}" alt="${escapeHTML(product.name)}" loading="lazy"
-           onerror="this.style.display='none';this.nextElementSibling.style.display='block'">`
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
     : '';
   const phHTML = `<span class="product-image-placeholder" ${product.image_url ? 'style="display:none"' : ''}>☕</span>`;
 
@@ -231,13 +216,13 @@ function buildProductCard(product, index) {
         onclick="updateQty('${product.id}',-1,this)" aria-label="Kurangi">−</button>
       <span class="qty-display" id="qty-${product.id}">${qty}</span>
       <button class="qty-btn plus" onclick="updateQty('${product.id}',1,this)" aria-label="Tambah">+</button>
-    </div>
-  `;
+    </div>`;
+
   return card;
 }
 
 function refreshCard(productId) {
-  const card = document.querySelector(`.product-card[data-id="${productId}"]`);
+  const card    = document.querySelector(`.product-card[data-id="${productId}"]`);
   if (!card) return;
   const product = products.find(p => p.id === productId);
   if (!product) return;
@@ -269,130 +254,118 @@ function updateQty(productId, delta, btn) {
   }
 
   refreshCard(productId);
-  syncCartUI();
-  if (cartOpen) renderCartItems();
+  syncStickyFooter();
 }
 
 function cartCount() { return Object.values(cart).reduce((s, { qty }) => s + qty, 0); }
 function cartTotal()  { return Object.values(cart).reduce((s, { product, qty }) => s + product.price * qty, 0); }
 
-function syncCartUI() {
-  const count = cartCount();
-  const badge = document.getElementById('cartBadge');
-  const prev  = parseInt(badge.textContent) || 0;
+function syncStickyFooter() {
+  const count  = cartCount();
+  const footer = document.getElementById('catalogFooter');
+  document.getElementById('csfQty').textContent   = `${count} item`;
+  document.getElementById('csfTotal').textContent = formatPrice(cartTotal());
 
-  badge.textContent = count;
-  if (count === 0) {
-    badge.classList.add('hidden');
+  if (count > 0) {
+    footer.classList.add('visible');
   } else {
-    badge.classList.remove('hidden');
-    if (count !== prev) {
-      badge.classList.remove('pop');
-      void badge.offsetWidth;
-      badge.classList.add('pop');
-    }
+    footer.classList.remove('visible');
   }
-
-  document.getElementById('cartTotalAmount').textContent = formatPrice(cartTotal());
-  const btn = document.getElementById('checkoutBtn');
-  if (btn) btn.disabled = count === 0;
 }
 
-function renderCartItems() {
-  const list  = document.getElementById('cartItemsList');
-  const items = Object.values(cart);
+// ================================================================
+// STEP 3 — CHECKOUT
+// ================================================================
 
-  if (!items.length) {
-    list.innerHTML = `<div class="cart-empty"><span class="cart-empty-icon">🛒</span><p>Keranjangmu kosong</p></div>`;
-    return;
+function goToStep3() {
+  if (!cartCount()) return;
+
+  renderCheckoutStep();
+
+  document.getElementById('step2').classList.remove('active');
+  document.getElementById('step3').classList.add('active');
+  window.scrollTo(0, 0);
+
+  setTimeout(() => document.getElementById('customerName').focus(), 100);
+}
+
+function goBackFromCheckout() {
+  document.getElementById('step3').classList.remove('active');
+  document.getElementById('step2').classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function renderCheckoutStep() {
+  // Date & type
+  document.getElementById('coDate').textContent = selectedDateLabel || '-';
+
+  if (orderType === 'pickup') {
+    document.getElementById('coTypeIcon').textContent  = '🏠';
+    document.getElementById('coTypeValue').textContent = 'Pickup';
+
+    document.getElementById('coPickupAddr').textContent = STORE_ADDRESS;
+    const mapsLink = document.getElementById('coMapsLink');
+    mapsLink.href = STORE_MAPS_URL;
+    document.getElementById('coPickupCard').style.display  = 'block';
+    document.getElementById('coDeliveryInput').style.display = 'none';
+  } else {
+    document.getElementById('coTypeIcon').textContent  = '🛵';
+    document.getElementById('coTypeValue').textContent = 'Delivery';
+
+    document.getElementById('coPickupCard').style.display  = 'none';
+    document.getElementById('coDeliveryInput').style.display = 'block';
   }
+
+  // Items list
+  const items = Object.values(cart);
+  const list  = document.getElementById('coItemsList');
 
   list.innerHTML = items.map(({ product, qty }) => {
     const img = product.image_url
-      ? `<img class="cart-item-img" src="${escapeHTML(product.image_url)}" alt="${escapeHTML(product.name)}" loading="lazy">`
-      : `<div class="cart-item-img">☕</div>`;
+      ? `<img class="co-item-img" src="${escapeHTML(product.image_url)}" alt="${escapeHTML(product.name)}" loading="lazy"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+      : '';
+    const ph = `<div class="co-item-img co-item-img-ph" ${product.image_url ? 'style="display:none"' : ''}>☕</div>`;
     return `
-      <div class="cart-item">
-        ${img}
-        <div class="cart-item-info">
-          <div class="cart-item-name">${escapeHTML(product.name)}</div>
-          <div class="cart-item-price">${formatPrice(product.price * qty)}</div>
+      <div class="co-item">
+        ${img}${ph}
+        <div class="co-item-info">
+          <div class="co-item-name">${escapeHTML(product.name)}</div>
+          <div class="co-item-qty">× ${qty}</div>
         </div>
-        <div class="cart-item-controls">
-          <button class="qty-btn minus" onclick="updateQty('${product.id}',-1,this)">−</button>
-          <span class="qty-display">${qty}</span>
-          <button class="qty-btn plus"  onclick="updateQty('${product.id}',1,this)">+</button>
-        </div>
+        <div class="co-item-price">${formatPrice(product.price * qty)}</div>
       </div>`;
   }).join('');
+
+  document.getElementById('coTotalAmount').textContent = formatPrice(cartTotal());
 }
 
-function toggleCart() {
-  cartOpen = !cartOpen;
-  document.getElementById('cartPanel').classList.toggle('active', cartOpen);
-  document.getElementById('cartOverlay').classList.toggle('active', cartOpen);
-  document.body.style.overflow = cartOpen ? 'hidden' : '';
-  if (cartOpen) renderCartItems();
-}
-
-// ================================================================
-// CHECKOUT
-// ================================================================
-
-function openCheckout() {
-  if (!cartCount()) return;
-  if (cartOpen) toggleCart();
-  renderOrderSummary();
-  document.getElementById('checkoutModal').classList.add('active');
-  document.body.style.overflow = 'hidden';
-  document.getElementById('customerName').focus();
-}
-
-function closeCheckout() {
-  document.getElementById('checkoutModal').classList.remove('active');
-  document.body.style.overflow = '';
-}
-
-function renderOrderSummary() {
-  const items = Object.values(cart);
-  const total = cartTotal();
-
-  const typeLabel = orderType === 'pickup' ? '🏠 Pickup' : '🛵 Delivery';
-
-  document.getElementById('orderSummary').innerHTML = `
-    <div class="order-meta">
-      <span class="order-meta-pill">${typeLabel}</span>
-      <span class="order-meta-pill">📅 ${selectedDateLabel}</span>
-    </div>
-    <div class="order-summary-title">Pesanan</div>
-    ${items.map(({ product, qty }) => `
-      <div class="order-summary-item">
-        <span>${escapeHTML(product.name)} ×${qty}</span>
-        <span>${formatPrice(product.price * qty)}</span>
-      </div>`).join('')}
-    <div class="order-summary-total">
-      <span>Total</span>
-      <span>${formatPrice(total)}</span>
-    </div>
-  `;
-}
-
-function submitOrder(event) {
-  event.preventDefault();
-
+function submitOrder() {
   const name    = document.getElementById('customerName').value.trim();
   const wa      = document.getElementById('customerWA').value.trim();
-  const address = document.getElementById('customerAddress').value.trim();
   const note    = document.getElementById('customerNote').value.trim();
+  const address = orderType === 'delivery'
+    ? document.getElementById('customerAddress').value.trim()
+    : '';
 
-  if (!name || !wa) return;
+  if (!name) {
+    showToast('Masukkan nama kamu dulu ya!', 'error');
+    document.getElementById('customerName').focus();
+    return;
+  }
+  if (!wa) {
+    showToast('Nomor WhatsApp wajib diisi!', 'error');
+    document.getElementById('customerWA').focus();
+    return;
+  }
   if (orderType === 'delivery' && !address) {
+    showToast('Masukkan alamat pengiriman dulu ya!', 'error');
     document.getElementById('customerAddress').focus();
     return;
   }
 
-  const items = Object.values(cart);
-  const total = cartTotal();
+  const items     = Object.values(cart);
+  const total     = cartTotal();
   const typeLabel = orderType === 'pickup' ? 'Pickup' : 'Delivery';
 
   let msg = `Halo *${STORE_NAME}*! 😊\n\n`;
@@ -406,24 +379,41 @@ function submitOrder(event) {
   msg += `WhatsApp: ${wa}\n`;
   msg += `Tipe: ${typeLabel}\n`;
   msg += `Tanggal: ${selectedDateLabel}\n`;
-  if (orderType === 'delivery' && address) msg += `Alamat: ${address}\n`;
+  if (orderType === 'delivery') msg += `Alamat: ${address}\n`;
   if (note) msg += `Catatan: ${note}\n`;
 
   window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(msg)}`, '_blank');
 
-  // Reset
-  closeCheckout();
+  // Reset after send
   cart = {};
-  syncCartUI();
   products.forEach(p => refreshCard(p.id));
-  document.getElementById('checkoutForm').reset();
-  showToast('Pesanan terkirim! Tunggu konfirmasi dari kami ya 🎉', 'success');
+  syncStickyFooter();
+
+  document.getElementById('customerName').value    = '';
+  document.getElementById('customerWA').value      = '';
+  document.getElementById('customerNote').value    = '';
+  if (orderType === 'delivery') document.getElementById('customerAddress').value = '';
+
+  // Go back to step 1 for a fresh order
+  document.getElementById('step3').classList.remove('active');
+  document.getElementById('step1').classList.add('active');
+  window.scrollTo(0, 0);
+
+  showToast('Pesanan terkirim! Tunggu konfirmasi kami ya 🎉', 'success');
 }
 
-// ---- CLOSE CHECKOUT ON OVERLAY CLICK ----
-document.getElementById('checkoutModal').addEventListener('click', function (e) {
-  if (e.target === this) closeCheckout();
-});
+// ================================================================
+// INIT
+// ================================================================
 
-// ---- INIT ----
-document.addEventListener('DOMContentLoaded', renderDateChips);
+document.addEventListener('DOMContentLoaded', () => {
+  renderDateChips();
+
+  // Wire up WA help buttons with pre-filled message
+  const waMsg = `Halo ${STORE_NAME}, saya butuh bantuan untuk pemesanan!`;
+  const waUrl = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(waMsg)}`;
+  const btn1  = document.getElementById('waHelpBtn1');
+  const btn2  = document.getElementById('waHelpBtn2');
+  if (btn1) btn1.href = waUrl;
+  if (btn2) btn2.href = waUrl;
+});
