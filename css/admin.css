@@ -1,0 +1,359 @@
+/* ================================================
+   BREVA COFFEE — ADMIN DASHBOARD STYLES
+   ================================================ */
+
+/* ---- LOGIN SCREEN ---- */
+.login-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cream);
+  padding: 24px;
+}
+
+.login-card {
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  padding: 40px 32px 44px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: var(--shadow-lg);
+  animation: fadeInUp 0.4s ease;
+}
+
+.login-logo { text-align: center; margin-bottom: 28px; }
+.login-logo .logo-icon { font-size: 52px; display: block; margin-bottom: 6px; }
+.login-logo .logo-text { font-size: 38px; color: var(--primary); }
+
+.login-subtitle {
+  font-size: 14px;
+  color: var(--text-soft);
+  text-align: center;
+  margin-bottom: 28px;
+  font-weight: 600;
+}
+
+.login-error {
+  background: #fde8e8;
+  color: #c0392b;
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  display: none;
+  border-left: 3px solid #c0392b;
+}
+
+.login-btn { width: 100%; padding: 14px; font-size: 16px; margin-top: 6px; }
+
+/* ---- ADMIN LAYOUT ---- */
+.admin-layout {
+  display: none;
+  min-height: 100vh;
+  flex-direction: column;
+  background: var(--cream);
+}
+
+.admin-layout.active { display: flex; }
+
+.admin-header {
+  background: var(--primary);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 16px rgba(85, 49, 37, 0.25);
+}
+
+.admin-header .logo-text { color: var(--cream); font-size: 22px; }
+.admin-header .logo-icon { font-size: 20px; }
+
+.admin-header-right { display: flex; align-items: center; gap: 14px; }
+
+.admin-user-email {
+  font-size: 13px;
+  color: var(--latte-light);
+  font-weight: 600;
+  display: none;
+}
+
+@media (min-width: 480px) { .admin-user-email { display: block; } }
+
+.btn-logout {
+  padding: 8px 16px;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--cream);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+
+.btn-logout:hover { background: rgba(255, 255, 255, 0.25); }
+
+/* ---- ADMIN MAIN ---- */
+.admin-main {
+  flex: 1;
+  padding: 28px 20px 60px;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.admin-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 26px;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.admin-page-title { font-size: 26px; color: var(--primary); }
+.admin-page-subtitle { font-size: 13px; color: var(--text-soft); font-weight: 600; margin-top: 3px; }
+
+/* ---- PRODUCTS ADMIN GRID ---- */
+.products-admin-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+@media (min-width: 560px)  { .products-admin-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 880px)  { .products-admin-grid { grid-template-columns: repeat(3, 1fr); } }
+
+/* ---- ADMIN PRODUCT CARD ---- */
+.admin-product-card {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  display: flex;
+  gap: 14px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease;
+  animation: fadeInUp 0.3s ease both;
+}
+
+.admin-product-card:hover { box-shadow: var(--shadow-md); }
+
+.admin-product-img {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-sm);
+  object-fit: contain;
+  background: var(--latte-xlight);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+}
+
+img.admin-product-img { font-size: inherit; }
+
+.admin-product-info { flex: 1; min-width: 0; }
+
+.admin-product-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-dark);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-product-price { font-size: 14px; font-weight: 800; color: var(--primary); margin-bottom: 8px; }
+
+.admin-product-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
+
+.admin-tag {
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.admin-tag.tag-new         { background: #fff3e0; color: #d4660a; }
+.admin-tag.tag-bestseller  { background: var(--primary); color: var(--cream); }
+.admin-tag.tag-hidden      { background: var(--latte-xlight); color: var(--text-soft); }
+.admin-tag.tag-visible     { background: #e8f5e9; color: #2e7d32; }
+
+.admin-product-actions { display: flex; gap: 8px; }
+
+.btn-sm {
+  padding: 7px 14px;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+  font-family: 'Nunito', sans-serif;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.btn-edit   { background: var(--latte-xlight); color: var(--primary); }
+.btn-edit:hover  { background: var(--latte-light); }
+.btn-delete { background: #fde8e8; color: #c0392b; }
+.btn-delete:hover { background: #c0392b; color: white; }
+
+/* ---- PRODUCT FORM MODAL ---- */
+.product-form .modal-box { max-width: 560px; }
+
+.toggle-group { display: flex; flex-direction: column; gap: 10px; }
+
+.toggle-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 14px;
+  background: var(--cream);
+  border-radius: var(--radius-md);
+}
+
+.toggle-label { display: flex; flex-direction: column; gap: 2px; }
+.toggle-label-title { font-size: 14px; font-weight: 700; color: var(--text-dark); }
+.toggle-label-sub   { font-size: 12px; color: var(--text-soft); font-weight: 500; }
+
+/* Toggle Switch */
+.toggle-switch { position: relative; display: inline-block; width: 46px; height: 25px; flex-shrink: 0; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: var(--border);
+  border-radius: 25px;
+  cursor: pointer;
+  transition: background 0.25s ease;
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 19px;
+  height: 19px;
+  left: 3px;
+  top: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.25s ease;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.22);
+}
+
+.toggle-switch input:checked + .toggle-slider { background: var(--primary); }
+.toggle-switch input:checked + .toggle-slider::before { transform: translateX(21px); }
+
+/* ---- IMAGE UPLOAD ---- */
+.image-upload-area {
+  border: 2px dashed var(--latte);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--latte-xlight);
+  position: relative;
+  min-height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-upload-area:hover,
+.image-upload-area.dragover { border-color: var(--primary); background: #efe5dc; }
+
+.image-upload-input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.image-upload-icon  { font-size: 30px; margin-bottom: 6px; display: block; }
+.image-upload-text  { font-size: 14px; color: var(--text-mid); font-weight: 700; }
+.image-upload-sub   { font-size: 12px; color: var(--text-soft); margin-top: 3px; font-weight: 500; }
+
+.image-preview-wrap { position: relative; display: inline-block; }
+.image-preview-wrap img { max-width: 110px; max-height: 110px; border-radius: var(--radius-sm); object-fit: contain; display: block; }
+
+.image-remove-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  background: #c0392b;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-family: 'Nunito', sans-serif;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+/* ---- FORM ACTIONS ---- */
+.form-actions { display: flex; gap: 10px; margin-top: 10px; }
+.form-actions .btn { flex: 1; justify-content: center; padding: 14px; }
+.form-actions .btn-primary { flex: 2; }
+
+/* ---- EMPTY STATE ---- */
+.empty-admin-state {
+  text-align: center;
+  padding: 80px 40px;
+  color: var(--text-soft);
+  display: none;
+}
+
+.empty-admin-state.visible { display: block; }
+.empty-admin-icon { font-size: 60px; display: block; margin-bottom: 14px; opacity: 0.38; }
+.empty-admin-state h3 { font-size: 22px; color: var(--text-mid); margin-bottom: 8px; }
+.empty-admin-state p  { font-size: 14px; font-weight: 500; }
+
+/* ---- CONFIRM DIALOG ---- */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(45, 26, 16, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.confirm-overlay.active { opacity: 1; pointer-events: all; }
+
+.confirm-box {
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  padding: 32px 28px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  transform: scale(0.88);
+  transition: transform 0.28s cubic-bezier(0.34, 1.2, 0.64, 1);
+  box-shadow: var(--shadow-lg);
+}
+
+.confirm-overlay.active .confirm-box { transform: scale(1); }
+
+.confirm-icon  { font-size: 44px; display: block; margin-bottom: 10px; }
+.confirm-title { font-size: 20px; color: var(--text-dark); margin-bottom: 8px; }
+.confirm-text  { font-size: 14px; color: var(--text-soft); margin-bottom: 24px; font-weight: 500; line-height: 1.6; }
+
+.confirm-actions { display: flex; gap: 12px; justify-content: center; }
+.confirm-actions .btn { flex: 1; justify-content: center; }

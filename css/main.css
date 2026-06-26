@@ -1,0 +1,243 @@
+/* ================================================
+   BREVA COFFEE — SHARED STYLES
+   ================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --primary:        #553125;
+  --primary-hover:  #6b3d30;
+  --primary-light:  #7a4a38;
+  --latte:          #c4956a;
+  --latte-light:    #e8d5c4;
+  --latte-xlight:   #f5ece4;
+  --cream:          #fdf8f4;
+  --white:          #ffffff;
+  --text-dark:      #2d1a10;
+  --text-mid:       #6b4c3b;
+  --text-soft:      #9e7b6b;
+  --border:         #ede0d4;
+  --shadow-sm:  0 2px 8px  rgba(85, 49, 37, 0.08);
+  --shadow-md:  0 4px 20px rgba(85, 49, 37, 0.12);
+  --shadow-lg:  0 8px 32px rgba(85, 49, 37, 0.18);
+  --radius-sm:  10px;
+  --radius-md:  16px;
+  --radius-lg:  22px;
+  --radius-xl:  30px;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background-color: var(--cream);
+  color: var(--text-dark);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, .logo-text { font-family: 'Fredoka One', cursive; font-weight: 400; }
+
+/* ---- BUTTONS ---- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: 'Nunito', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.btn-primary { background: var(--primary); color: var(--white); }
+.btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.btn-primary:active { transform: translateY(0); }
+
+.btn-secondary { background: var(--latte-light); color: var(--primary); }
+.btn-secondary:hover { background: var(--latte); color: var(--white); }
+
+.btn-danger { background: #fde8e8; color: #c0392b; }
+.btn-danger:hover { background: #c0392b; color: var(--white); }
+
+/* ---- FORMS ---- */
+.form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.form-group label { font-size: 14px; font-weight: 700; color: var(--text-mid); }
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: 'Nunito', sans-serif;
+  font-size: 15px;
+  color: var(--text-dark);
+  background: var(--white);
+  transition: border-color 0.2s ease;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus { border-color: var(--latte); }
+
+.form-group textarea { resize: vertical; min-height: 80px; }
+
+/* ---- TOAST ---- */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  background: var(--white);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dark);
+  animation: toastIn 0.35s ease forwards;
+  min-width: 260px;
+  max-width: 340px;
+  border-left: 4px solid var(--latte);
+  pointer-events: all;
+}
+
+.toast.success { border-left-color: #5a9a6e; }
+.toast.error   { border-left-color: #c0392b; }
+.toast-icon    { font-size: 18px; flex-shrink: 0; }
+.toast-out     { animation: toastOut 0.3s ease forwards; }
+
+/* ---- MODAL ---- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(45, 26, 16, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.modal-overlay.active { opacity: 1; pointer-events: all; }
+
+@media (min-width: 600px) {
+  .modal-overlay { align-items: center; padding: 20px; }
+}
+
+.modal-box {
+  background: var(--white);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding: 28px 24px 36px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  transform: translateY(60px);
+  transition: transform 0.35s cubic-bezier(0.34, 1.1, 0.64, 1);
+}
+
+.modal-overlay.active .modal-box { transform: translateY(0); }
+
+@media (min-width: 600px) {
+  .modal-box {
+    border-radius: var(--radius-xl);
+    padding: 36px 32px;
+    transform: scale(0.94) translateY(10px);
+  }
+  .modal-overlay.active .modal-box { transform: scale(1) translateY(0); }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 22px;
+}
+
+.modal-header h3 { font-size: 22px; color: var(--primary); }
+
+.modal-close {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: var(--latte-xlight);
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-mid);
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.modal-close:hover { background: var(--border); color: var(--text-dark); }
+
+/* ---- SPINNER ---- */
+.spinner {
+  width: 38px;
+  height: 38px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 14px;
+  color: var(--text-soft);
+  font-weight: 600;
+  grid-column: 1 / -1;
+}
+
+/* ---- KEYFRAMES ---- */
+@keyframes spin       { to { transform: rotate(360deg); } }
+@keyframes toastIn    { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes toastOut   { from { transform: translateX(0); opacity: 1; } to { transform: translateX(120%); opacity: 0; } }
+@keyframes fadeInUp   { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes shimmer    { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+@keyframes pop {
+  0%, 100% { transform: scale(1); }
+  35%       { transform: scale(1.55); }
+  65%       { transform: scale(0.88); }
+}
+
+@keyframes bounce {
+  0%, 100% { transform: scale(1); }
+  35%       { transform: scale(0.78); }
+  70%       { transform: scale(1.18); }
+}

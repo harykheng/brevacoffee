@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Breva Coffee — Minuman Kopi Segar</title>
+  <meta name="description" content="Breva Coffee — Pilihan minuman kopi segar dan nikmat.">
+  <meta name="theme-color" content="#553125">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/catalog.css">
+</head>
+<body>
+
+  <!-- ===== HEADER ===== -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">☕</span>
+        <div>
+          <div class="logo-text">Breva</div>
+          <div class="tagline">Minuman Kopi Segar</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== HERO ===== -->
+  <section class="hero">
+    <div class="hero-content">
+      <h2>Temukan Favoritmu ☕</h2>
+      <p>Kopi segar, pilihan terbaik, dikirim untukmu</p>
+    </div>
+  </section>
+
+  <!-- ===== PRODUCTS ===== -->
+  <main class="products-section">
+    <h2 class="section-title">Menu Kami</h2>
+    <div class="products-grid" id="productsGrid">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <span>Memuat menu...</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="site-footer">
+    <p>© 2024 Breva Coffee — Dibuat dengan ❤️</p>
+  </footer>
+
+  <!-- ===== FLOATING CART ===== -->
+  <div class="floating-cart">
+    <button class="cart-toggle-btn" id="cartToggleBtn" onclick="toggleCart()" aria-label="Buka keranjang">
+      🛒
+      <span class="cart-badge hidden" id="cartBadge">0</span>
+    </button>
+  </div>
+
+  <!-- ===== CART OVERLAY ===== -->
+  <div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
+
+  <!-- ===== CART PANEL ===== -->
+  <div class="cart-panel" id="cartPanel" role="dialog" aria-label="Keranjang belanja">
+    <div class="drag-handle"></div>
+
+    <div class="cart-panel-header">
+      <h3>Keranjangmu 🛒</h3>
+      <button class="modal-close" onclick="toggleCart()" aria-label="Tutup keranjang">✕</button>
+    </div>
+
+    <div class="cart-items-list" id="cartItemsList"></div>
+
+    <div class="cart-panel-footer">
+      <div class="cart-total-row">
+        <span class="cart-total-label">Total</span>
+        <span class="cart-total-amount" id="cartTotalAmount">Rp 0</span>
+      </div>
+      <button class="btn-checkout-main" id="checkoutBtn" onclick="openCheckout()" disabled>
+        Checkout via WhatsApp 📱
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== CHECKOUT MODAL ===== -->
+  <div class="modal-overlay" id="checkoutModal" role="dialog" aria-label="Detail pesanan">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Detail Pesanan 📋</h3>
+        <button class="modal-close" onclick="closeCheckout()" aria-label="Tutup">✕</button>
+      </div>
+
+      <div class="order-summary" id="orderSummary"></div>
+
+      <form id="checkoutForm" onsubmit="submitOrder(event)" novalidate>
+        <div class="form-group">
+          <label for="customerName">Nama Pemesan</label>
+          <input type="text" id="customerName" placeholder="Nama kamu..." required autocomplete="name">
+        </div>
+
+        <div class="form-group">
+          <label for="customerWA">Nomor WhatsApp</label>
+          <input type="tel" id="customerWA" placeholder="08xxxxxxxxxx" required autocomplete="tel">
+        </div>
+
+        <div class="form-group">
+          <label>Metode Pengiriman</label>
+          <div class="delivery-options">
+            <div class="delivery-option selected" data-value="Ambil Sendiri" onclick="selectDelivery(this)">
+              <span class="delivery-option-icon">🏠</span>
+              Ambil Sendiri
+            </div>
+            <div class="delivery-option" data-value="Dikirim" onclick="selectDelivery(this)">
+              <span class="delivery-option-icon">🛵</span>
+              Dikirim
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" id="addressGroup" style="display:none">
+          <label for="customerAddress">Alamat Lengkap</label>
+          <textarea id="customerAddress" placeholder="Tulis alamat lengkap di sini..." rows="3"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="customerNote">Catatan (Opsional)</label>
+          <textarea id="customerNote" placeholder="Ada pesan khusus untuk kami?" rows="2"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-wa-submit">
+          Kirim Pesanan via WhatsApp 📱
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== TOAST CONTAINER ===== -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- ===== SCRIPTS ===== -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/catalog.js"></script>
+
+</body>
+</html>
