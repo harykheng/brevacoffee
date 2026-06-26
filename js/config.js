@@ -13,6 +13,11 @@ const ADMIN_WHATSAPP = '62881025030603';
 // Nama toko (tampil di pesan WhatsApp)
 const STORE_NAME = 'Breva Coffee';
 
+// Info toko untuk halaman pickup
+const STORE_ADDRESS    = 'Jl. Contoh No. 1, Jakarta Selatan 12345';
+const STORE_MAPS_URL   = 'https://maps.google.com/?q=Breva+Coffee';
+const STORE_OPEN_HOURS = 'Senin – Minggu, 08.00 – 21.00 WIB';
+
 // ================================================
 // INIT SUPABASE CLIENT
 // ================================================
