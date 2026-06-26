@@ -349,6 +349,17 @@
 .banner-sub    { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.75); }
 .banner-deco   { font-size: 44px; opacity: 0.2; flex-shrink: 0; line-height: 1; margin-left: 8px; }
 
+.banner-bg-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+  opacity: 0.22;
+  pointer-events: none;
+}
+
 /* Background circle deco */
 .catalog-banner::before {
   content: '';

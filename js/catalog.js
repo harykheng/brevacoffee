@@ -70,6 +70,12 @@ function applyBrandSettings() {
   } else if (appSettings.brand_icon) {
     document.querySelectorAll('.brand-icon-emoji').forEach(el => el.textContent = appSettings.brand_icon);
   }
+
+  // Banner image
+  if (appSettings.banner_image_url) {
+    const bgImg = document.getElementById('bannerBgImg');
+    if (bgImg) { bgImg.src = appSettings.banner_image_url; bgImg.style.display = ''; }
+  }
 }
 
 // ================================================================
@@ -83,9 +89,9 @@ function selectOrderType(card) {
 
   const addrCard = document.getElementById('pickupAddressCard');
   if (orderType === 'pickup') {
-    document.getElementById('pickupAddr').textContent  = STORE_ADDRESS;
-    document.getElementById('pickupHours').textContent = STORE_OPEN_HOURS;
-    document.getElementById('pickupMapsLink').href     = STORE_MAPS_URL;
+    document.getElementById('pickupAddr').textContent  = appSettings?.store_address  || STORE_ADDRESS;
+    document.getElementById('pickupHours').textContent = appSettings?.store_hours    || STORE_OPEN_HOURS;
+    document.getElementById('pickupMapsLink').href     = appSettings?.store_maps_url || STORE_MAPS_URL;
     addrCard.classList.add('visible');
   } else {
     addrCard.classList.remove('visible');
@@ -337,9 +343,9 @@ function renderCheckoutStep() {
     document.getElementById('coTypeIcon').textContent  = '🏠';
     document.getElementById('coTypeValue').textContent = 'Pickup';
 
-    document.getElementById('coPickupAddr').textContent = STORE_ADDRESS;
+    document.getElementById('coPickupAddr').textContent = appSettings?.store_address  || STORE_ADDRESS;
     const mapsLink = document.getElementById('coMapsLink');
-    mapsLink.href = STORE_MAPS_URL;
+    mapsLink.href = appSettings?.store_maps_url || STORE_MAPS_URL;
     document.getElementById('coPickupCard').style.display  = 'block';
     document.getElementById('coDeliveryInput').style.display = 'none';
   } else {

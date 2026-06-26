@@ -140,9 +140,53 @@
             </div>
           </div>
 
+          <!-- Informasi Toko -->
+          <div class="settings-section">
+            <div class="settings-section-title">Informasi Toko</div>
+
+            <div class="form-group">
+              <label for="settingStoreAddress">Alamat Pickup</label>
+              <textarea id="settingStoreAddress" rows="3" placeholder="Jl. Contoh No.1, Kota..."></textarea>
+            </div>
+
+            <div class="form-group">
+              <label for="settingStoreHours">Jam Operasional</label>
+              <input type="text" id="settingStoreHours" placeholder="Senin – Minggu, 08.00 – 21.00 WIB">
+            </div>
+
+            <div class="form-group" style="margin-bottom:0">
+              <label for="settingStoreMapsUrl">Link Google Maps</label>
+              <input type="url" id="settingStoreMapsUrl" placeholder="https://maps.google.com/...">
+              <p class="form-hint">URL yang terbuka saat pelanggan tap "Lihat di Maps"</p>
+            </div>
+          </div>
+
           <!-- Banner Katalog -->
           <div class="settings-section">
             <div class="settings-section-title">Banner Katalog</div>
+
+            <div class="form-group">
+              <label>Foto Banner (opsional)</label>
+              <div class="image-upload-area" id="bannerImageUploadArea">
+                <input type="file" class="image-upload-input" id="bannerImageInput"
+                  accept="image/png,image/jpeg,image/webp"
+                  onchange="handleBannerImageSelect(event)">
+                <div id="bannerImageUploadPrompt">
+                  <span class="image-upload-icon">🖼️</span>
+                  <div class="image-upload-text">Klik atau seret foto ke sini</div>
+                  <div class="image-upload-sub">PNG, JPG, WEBP — Maks 5 MB</div>
+                </div>
+                <div id="bannerImagePreviewWrap" style="display:none">
+                  <div class="image-preview-wrap">
+                    <img id="bannerImagePreviewImg" src="" alt="Preview banner">
+                    <button type="button" class="image-remove-btn" onclick="removeBannerImage(event)" aria-label="Hapus foto">✕</button>
+                  </div>
+                </div>
+              </div>
+              <p class="form-hint">Tampil sebagai foto background di banner katalog</p>
+            </div>
+
+            <input type="hidden" id="existingBannerImageUrl">
 
             <div class="form-group">
               <label for="settingBannerTitle">Judul Banner</label>

@@ -3,11 +3,12 @@
 // ================================================
 
 // ---- STATE ----
-let adminProducts    = [];
-let editingProductId = null;
-let selectedFile     = null;
-let selectedLogoFile = null;
-let confirmCallback  = null;
+let adminProducts      = [];
+let editingProductId   = null;
+let selectedFile       = null;
+let selectedLogoFile   = null;
+let selectedBannerFile = null;
+let confirmCallback    = null;
 
 // ---- HELPERS ----
 function formatPrice(price) {
@@ -255,20 +256,29 @@ function resetImageUpload() {
 
 // Drag-and-drop (attached after DOM ready)
 function initDragDrop() {
-  const area = document.getElementById('imageUploadArea');
-  if (!area) return;
+  function attachDrop(areaId, onFile) {
+    const area = document.getElementById(areaId);
+    if (!area) return;
+    area.addEventListener('dragover',  e  => { e.preventDefault(); area.classList.add('dragover'); });
+    area.addEventListener('dragleave', () => area.classList.remove('dragover'));
+    area.addEventListener('drop', e => {
+      e.preventDefault();
+      area.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) onFile(file);
+    });
+  }
 
-  area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('dragover'); });
-  area.addEventListener('dragleave', ()  => area.classList.remove('dragover'));
-  area.addEventListener('drop', e => {
-    e.preventDefault();
-    area.classList.remove('dragover');
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
-      if (file.size > 5 * 1024 * 1024) { showToast('Ukuran foto maks 5 MB ya!', 'error'); return; }
-      selectedFile = file;
-      showImagePreview(URL.createObjectURL(file));
-    }
+  attachDrop('imageUploadArea', file => {
+    if (file.size > 5 * 1024 * 1024) { showToast('Ukuran foto maks 5 MB ya!', 'error'); return; }
+    selectedFile = file;
+    showImagePreview(URL.createObjectURL(file));
+  });
+
+  attachDrop('bannerImageUploadArea', file => {
+    if (file.size > 5 * 1024 * 1024) { showToast('Ukuran foto banner maks 5 MB ya!', 'error'); return; }
+    selectedBannerFile = file;
+    showBannerImagePreview(URL.createObjectURL(file));
   });
 }
 
@@ -383,13 +393,18 @@ async function loadSettings() {
       .from('settings').select('*').eq('id', 1).single();
     if (error || !data) return;
 
-    document.getElementById('settingBrandName').value   = data.brand_name      || '';
-    document.getElementById('settingBrandIcon').value   = data.brand_icon      || '☕';
-    document.getElementById('settingBannerTitle').value = data.banner_title    || '';
-    document.getElementById('settingBannerSub').value   = data.banner_subtitle || '';
-    document.getElementById('existingLogoUrl').value    = data.logo_url        || '';
+    document.getElementById('settingBrandName').value    = data.brand_name       || '';
+    document.getElementById('settingBrandIcon').value    = data.brand_icon       || '☕';
+    document.getElementById('settingStoreAddress').value = data.store_address    || '';
+    document.getElementById('settingStoreHours').value   = data.store_hours      || '';
+    document.getElementById('settingStoreMapsUrl').value = data.store_maps_url   || '';
+    document.getElementById('settingBannerTitle').value  = data.banner_title     || '';
+    document.getElementById('settingBannerSub').value    = data.banner_subtitle  || '';
+    document.getElementById('existingLogoUrl').value     = data.logo_url         || '';
+    document.getElementById('existingBannerImageUrl').value = data.banner_image_url || '';
 
-    if (data.logo_url) showLogoPreview(data.logo_url);
+    if (data.logo_url)         showLogoPreview(data.logo_url);
+    if (data.banner_image_url) showBannerImagePreview(data.banner_image_url);
   } catch (err) {
     console.error('Load settings failed:', err);
   }
@@ -404,9 +419,13 @@ async function saveSettings(event) {
   try {
     const brand_name      = document.getElementById('settingBrandName').value.trim();
     const brand_icon      = document.getElementById('settingBrandIcon').value.trim() || '☕';
+    const store_address   = document.getElementById('settingStoreAddress').value.trim();
+    const store_hours     = document.getElementById('settingStoreHours').value.trim();
+    const store_maps_url  = document.getElementById('settingStoreMapsUrl').value.trim() || null;
     const banner_title    = document.getElementById('settingBannerTitle').value.trim();
     const banner_subtitle = document.getElementById('settingBannerSub').value.trim();
     let   logo_url        = document.getElementById('existingLogoUrl').value || null;
+    let   banner_image_url = document.getElementById('existingBannerImageUrl').value || null;
 
     if (selectedLogoFile) {
       const ext      = selectedLogoFile.name.split('.').pop().toLowerCase();
@@ -419,14 +438,29 @@ async function saveSettings(event) {
       logo_url = urlData.publicUrl;
     }
 
+    if (selectedBannerFile) {
+      const ext      = selectedBannerFile.name.split('.').pop().toLowerCase();
+      const fileName = `banner-${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabaseClient.storage
+        .from('product-images').upload(fileName, selectedBannerFile, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabaseClient.storage
+        .from('product-images').getPublicUrl(fileName);
+      banner_image_url = urlData.publicUrl;
+    }
+
     const { error } = await supabaseClient.from('settings').upsert({
-      id: 1, brand_name, brand_icon, logo_url, banner_title, banner_subtitle,
+      id: 1, brand_name, brand_icon, logo_url,
+      store_address, store_hours, store_maps_url,
+      banner_title, banner_subtitle, banner_image_url,
       updated_at: new Date().toISOString(),
     });
     if (error) throw error;
 
-    document.getElementById('existingLogoUrl').value = logo_url || '';
-    selectedLogoFile = null;
+    document.getElementById('existingLogoUrl').value        = logo_url         || '';
+    document.getElementById('existingBannerImageUrl').value = banner_image_url || '';
+    selectedLogoFile   = null;
+    selectedBannerFile = null;
     showToast('Pengaturan berhasil disimpan! ✅', 'success');
 
   } catch (err) {
@@ -464,6 +498,34 @@ function removeLogo(e) {
   document.getElementById('logoUploadPrompt').style.display = '';
   document.getElementById('logoPreviewWrap').style.display  = 'none';
   document.getElementById('logoPreviewImg').src             = '';
+}
+
+function handleBannerImageSelect(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('Ukuran foto banner maks 5 MB ya!', 'error');
+    e.target.value = '';
+    return;
+  }
+  selectedBannerFile = file;
+  showBannerImagePreview(URL.createObjectURL(file));
+}
+
+function showBannerImagePreview(url) {
+  document.getElementById('bannerImageUploadPrompt').style.display = 'none';
+  document.getElementById('bannerImagePreviewWrap').style.display  = 'block';
+  document.getElementById('bannerImagePreviewImg').src             = url;
+}
+
+function removeBannerImage(e) {
+  e.stopPropagation();
+  selectedBannerFile = null;
+  document.getElementById('existingBannerImageUrl').value          = '';
+  document.getElementById('bannerImageInput').value                = '';
+  document.getElementById('bannerImageUploadPrompt').style.display = '';
+  document.getElementById('bannerImagePreviewWrap').style.display  = 'none';
+  document.getElementById('bannerImagePreviewImg').src             = '';
 }
 
 // ---- MODAL OVERLAY CLICKS ----
