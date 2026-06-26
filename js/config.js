@@ -14,8 +14,8 @@ const ADMIN_WHATSAPP = '62881025030603';
 const STORE_NAME = 'Breva Coffee';
 
 // Info toko untuk halaman pickup
-const STORE_ADDRESS    = 'Jl. Contoh No. 1, Jakarta Selatan 12345';
-const STORE_MAPS_URL   = 'https://maps.google.com/?q=Breva+Coffee';
+const STORE_ADDRESS    = 'Alam Sutera, Jl. Jalur Sutera Bar. No.Kav.19B, RT.002/RW.003, Panunggangan Tim., Kec. Pinang, Kota Tangerang, Banten 15143';
+const STORE_MAPS_URL   = 'https://share.google/0wIemWDWjEzPHAI8p';
 const STORE_OPEN_HOURS = 'Senin – Minggu, 08.00 – 21.00 WIB';
 
 // ================================================
