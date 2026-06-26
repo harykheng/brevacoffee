@@ -688,27 +688,28 @@
 
 .site-footer {
   text-align: center;
-  padding: 18px 20px calc(20px + env(safe-area-inset-bottom));
+  padding: 12px 20px calc(14px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--border);
+  margin-top: 10px;
 }
 
 .footer-socials {
   display: flex;
   justify-content: center;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 6px;
+  margin-bottom: 7px;
 }
 
 .footer-social-link {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 6px 12px;
+  gap: 4px;
+  padding: 5px 10px;
   border-radius: var(--radius-sm);
   background: var(--latte-xlight);
   color: var(--primary);
   text-decoration: none;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   transition: background 0.2s, transform 0.2s;
 }
@@ -719,13 +720,13 @@
 }
 
 .footer-icon {
-  width: 13px;
-  height: 13px;
+  width: 11px;
+  height: 11px;
   flex-shrink: 0;
 }
 
 .footer-powered {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-soft);
   font-weight: 500;
 }
