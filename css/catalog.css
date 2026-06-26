@@ -549,6 +549,8 @@
   padding: 16px;
   padding-bottom: calc(40px + env(safe-area-inset-bottom));
   min-height: calc(100dvh - 57px);
+  display: flex;
+  flex-direction: column;
 }
 
 /* ---- CO SECTION ---- */
@@ -678,7 +680,7 @@
   text-align: center;
   padding: 28px 20px 40px;
   border-top: 1px solid var(--border);
-  margin-top: 8px;
+  margin-top: auto;
 }
 
 .footer-socials {
