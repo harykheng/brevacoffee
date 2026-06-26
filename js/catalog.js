@@ -166,7 +166,7 @@ async function loadProducts() {
     if (!products.length) {
       grid.innerHTML = `
         <div class="catalog-empty">
-          <span class="catalog-empty-icon">☕</span>
+          <img src="images/mascot-surprised.jpeg" alt="" class="mascot-img catalog-state-mascot" aria-hidden="true">
           <h3>Menu segera hadir!</h3>
           <p>Produk sedang kami siapkan.</p>
         </div>`;
@@ -179,7 +179,7 @@ async function loadProducts() {
     console.error(err);
     grid.innerHTML = `
       <div class="catalog-error">
-        <span class="catalog-error-icon">😔</span>
+        <img src="images/mascot-surprised.jpeg" alt="" class="mascot-img catalog-state-mascot" aria-hidden="true">
         <h3>Gagal memuat menu</h3>
         <p>Coba refresh halaman ini ya!</p>
       </div>`;
