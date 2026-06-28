@@ -7,9 +7,14 @@ let orderType         = null;   // 'pickup' | 'delivery'
 let selectedDate      = null;   // 'YYYY-MM-DD'
 let selectedDateLabel = null;   // human-readable label
 let products          = [];
-let cart              = {};
+let cart              = {};     // key: productId OR 'productId|Var1|Var2'
 let productsLoaded    = false;
 let appSettings       = null;   // loaded from settings table
+
+// variant sheet state
+let pendingProduct  = null;
+let pendingVariants = {};       // { groupName: { label, price } }
+let pendingQty      = 1;
 
 // ---- HELPERS ----
 const DAYS   = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
@@ -238,7 +243,8 @@ function buildProductCard(product, index) {
   card.dataset.id = product.id;
   card.style.animationDelay = `${Math.min(index, 8) * 60}ms`;
 
-  const qty = cart[product.id]?.qty || 0;
+  const hasVariants = product.variants && product.variants.length > 0;
+  const qty = hasVariants ? getProductCartQty(product.id) : (cart[product.id]?.qty || 0);
 
   let badgeHTML = '';
   if (product.is_bestseller) badgeHTML = '<div class="product-badge badge-bestseller">⭐ Terlaris</div>';
@@ -250,6 +256,20 @@ function buildProductCard(product, index) {
     : '';
   const phHTML = `<span class="product-image-placeholder" ${product.image_url ? 'style="display:none"' : ''}>☕</span>`;
 
+  const controlsHTML = hasVariants
+    ? `<div class="product-controls">
+        <button class="btn-pick-variant" data-id="${product.id}" onclick="openVariantSheet('${product.id}')">
+          <span class="vbadge" id="vbadge-${product.id}" style="display:${qty > 0 ? 'flex' : 'none'}">${qty}</span>
+          Pilih
+        </button>
+       </div>`
+    : `<div class="product-controls">
+        <button class="qty-btn minus${qty === 0 ? ' minus-disabled' : ''}"
+          onclick="updateQty('${product.id}',-1,this)" aria-label="Kurangi">−</button>
+        <span class="qty-display" id="qty-${product.id}">${qty}</span>
+        <button class="qty-btn plus" onclick="updateQty('${product.id}',1,this)" aria-label="Tambah">+</button>
+       </div>`;
+
   card.innerHTML = `
     ${badgeHTML}
     <div class="product-image-wrap">${imgHTML}${phHTML}</div>
@@ -257,12 +277,7 @@ function buildProductCard(product, index) {
       <div class="product-name">${escapeHTML(product.name)}</div>
       <div class="product-price">${formatPrice(product.price)}</div>
     </div>
-    <div class="product-controls">
-      <button class="qty-btn minus${qty === 0 ? ' minus-disabled' : ''}"
-        onclick="updateQty('${product.id}',-1,this)" aria-label="Kurangi">−</button>
-      <span class="qty-display" id="qty-${product.id}">${qty}</span>
-      <button class="qty-btn plus" onclick="updateQty('${product.id}',1,this)" aria-label="Tambah">+</button>
-    </div>`;
+    ${controlsHTML}`;
 
   return card;
 }
@@ -304,7 +319,15 @@ function updateQty(productId, delta, btn) {
 }
 
 function cartCount() { return Object.values(cart).reduce((s, { qty }) => s + qty, 0); }
-function cartTotal()  { return Object.values(cart).reduce((s, { product, qty }) => s + product.price * qty, 0); }
+function cartTotal() {
+  return Object.values(cart).reduce((s, { product, qty, extraPrice = 0 }) => s + (product.price + extraPrice) * qty, 0);
+}
+
+function getProductCartQty(productId) {
+  return Object.entries(cart)
+    .filter(([k]) => k === productId || k.startsWith(productId + '|'))
+    .reduce((s, [, v]) => s + v.qty, 0);
+}
 
 function syncStickyFooter() {
   const count  = cartCount();
@@ -366,27 +389,156 @@ function renderCheckoutStep() {
   }
 
   // Items list
-  const items = Object.values(cart);
-  const list  = document.getElementById('coItemsList');
-
-  list.innerHTML = items.map(({ product, qty }) => {
+  const list = document.getElementById('coItemsList');
+  list.innerHTML = Object.entries(cart).map(([key, { product, qty, variantLabels, extraPrice = 0 }]) => {
+    const unitPrice = product.price + extraPrice;
     const img = product.image_url
       ? `<img class="co-item-img" src="${escapeHTML(product.image_url)}" alt="${escapeHTML(product.name)}" loading="lazy"
              onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
       : '';
     const ph = `<div class="co-item-img co-item-img-ph" ${product.image_url ? 'style="display:none"' : ''}>☕</div>`;
+    const variantStr = variantLabels?.length
+      ? `<div class="co-item-variants">${variantLabels.map(escapeHTML).join(' · ')}</div>` : '';
     return `
       <div class="co-item">
         ${img}${ph}
         <div class="co-item-info">
           <div class="co-item-name">${escapeHTML(product.name)}</div>
+          ${variantStr}
           <div class="co-item-qty">× ${qty}</div>
         </div>
-        <div class="co-item-price">${formatPrice(product.price * qty)}</div>
+        <div class="co-item-price">${formatPrice(unitPrice * qty)}</div>
+        <button class="co-item-del" onclick="removeCartItem('${escapeHTML(key)}')" aria-label="Hapus">✕</button>
       </div>`;
   }).join('');
 
   document.getElementById('coTotalAmount').textContent = formatPrice(cartTotal());
+}
+
+// ================================================================
+// VARIANT SHEET
+// ================================================================
+
+function openVariantSheet(productId) {
+  const product = products.find(p => p.id === productId);
+  if (!product) return;
+
+  pendingProduct  = product;
+  pendingVariants = {};
+  pendingQty      = 1;
+
+  // Header
+  const img = document.getElementById('vsImg');
+  const ph  = document.getElementById('vsImgPh');
+  if (product.image_url) {
+    img.src = product.image_url; img.alt = product.name;
+    img.style.display = ''; ph.style.display = 'none';
+  } else {
+    img.style.display = 'none'; ph.style.display = '';
+  }
+  document.getElementById('vsName').textContent     = product.name;
+  document.getElementById('vsQtyDisplay').textContent = '1';
+
+  // Build variant groups
+  const body = document.getElementById('vsBody');
+  body.innerHTML = '';
+  (product.variants || []).forEach(group => {
+    const sec = document.createElement('div');
+    sec.className = 'vs-group';
+    sec.innerHTML = `<div class="vs-group-name">${escapeHTML(group.name)}</div>
+      <div class="vs-chips" data-group="${escapeHTML(group.name)}"></div>`;
+    const chips = sec.querySelector('.vs-chips');
+    group.options.forEach(opt => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'vs-chip';
+      chip.textContent = opt.label + (opt.price > 0 ? ` +${formatPrice(opt.price)}` : '');
+      chip.dataset.label = opt.label;
+      chip.dataset.price = opt.price || 0;
+      chip.onclick = () => selectVariantChip(chip, group.name);
+      chips.appendChild(chip);
+    });
+    body.appendChild(sec);
+  });
+
+  updateVsTotal();
+  document.getElementById('variantOverlay').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeVariantSheet() {
+  document.getElementById('variantOverlay').classList.remove('active');
+  document.body.style.overflow = '';
+  pendingProduct  = null;
+  pendingVariants = {};
+  pendingQty      = 1;
+}
+
+function selectVariantChip(chip, groupName) {
+  chip.closest('.vs-chips').querySelectorAll('.vs-chip').forEach(c => c.classList.remove('selected'));
+  chip.classList.add('selected');
+  pendingVariants[groupName] = { label: chip.dataset.label, price: parseInt(chip.dataset.price, 10) || 0 };
+  updateVsTotal();
+}
+
+function changeVsQty(delta) {
+  pendingQty = Math.max(1, Math.min(20, pendingQty + delta));
+  document.getElementById('vsQtyDisplay').textContent = pendingQty;
+  updateVsTotal();
+}
+
+function updateVsTotal() {
+  if (!pendingProduct) return;
+  const extra = Object.values(pendingVariants).reduce((s, v) => s + v.price, 0);
+  const total = (pendingProduct.price + extra) * pendingQty;
+  document.getElementById('vsPrice').textContent      = formatPrice(pendingProduct.price);
+  document.getElementById('vsTotalPrice').textContent = formatPrice(total);
+}
+
+function confirmVariantAdd() {
+  if (!pendingProduct) return;
+  const groups = pendingProduct.variants || [];
+  for (const g of groups) {
+    if (!pendingVariants[g.name]) {
+      showToast(`Pilih ${g.name} dulu ya!`, 'error');
+      return;
+    }
+  }
+
+  const variantLabels = groups.map(g => pendingVariants[g.name].label);
+  const cartKey  = variantLabels.length ? `${pendingProduct.id}|${variantLabels.join('|')}` : pendingProduct.id;
+  const extraPrice = Object.values(pendingVariants).reduce((s, v) => s + v.price, 0);
+
+  if (cart[cartKey]) cart[cartKey].qty += pendingQty;
+  else cart[cartKey] = { product: pendingProduct, qty: pendingQty, variantLabels, extraPrice };
+
+  const pid = pendingProduct.id;
+  closeVariantSheet();
+  syncStickyFooter();
+  updateVariantBadge(pid);
+
+  const btn = document.querySelector(`.btn-pick-variant[data-id="${pid}"]`);
+  if (btn) { btn.classList.add('bounce'); btn.addEventListener('animationend', () => btn.classList.remove('bounce'), { once: true }); }
+}
+
+function updateVariantBadge(productId) {
+  const badge = document.getElementById(`vbadge-${productId}`);
+  if (!badge) return;
+  const qty = getProductCartQty(productId);
+  badge.textContent    = qty;
+  badge.style.display  = qty > 0 ? 'flex' : 'none';
+}
+
+function removeCartItem(cartKey) {
+  const productId = cartKey.split('|')[0];
+  delete cart[cartKey];
+  renderCheckoutStep();
+  syncStickyFooter();
+  updateVariantBadge(productId);
+  if (!cartCount()) {
+    goBackFromCheckout();
+    showToast('Keranjang kosong. Tambah produk dulu ya!', 'info');
+  }
 }
 
 // ================================================================
@@ -477,14 +629,16 @@ function submitOrder() {
     return;
   }
 
-  const items     = Object.values(cart);
+  const items     = Object.entries(cart);
   const total     = cartTotal();
   const typeLabel = orderType === 'pickup' ? 'Pickup' : 'Delivery';
 
   let msg = `Halo *${STORE_NAME}*! 😊\n\n`;
   msg += `*Pesanan:*\n`;
-  items.forEach(({ product, qty }, i) => {
-    msg += `${i + 1}. ${product.name} ×${qty} — ${formatPrice(product.price * qty)}\n`;
+  items.forEach(([, { product, qty, variantLabels, extraPrice = 0 }], i) => {
+    const unitPrice   = product.price + extraPrice;
+    const variantStr  = variantLabels?.length ? ` (${variantLabels.join(', ')})` : '';
+    msg += `${i + 1}. ${product.name}${variantStr} ×${qty} — ${formatPrice(unitPrice * qty)}\n`;
   });
   msg += `\n*Total: ${formatPrice(total)}*\n\n`;
   msg += `---\n`;
@@ -499,7 +653,10 @@ function submitOrder() {
 
   // Reset after send
   cart = {};
-  products.forEach(p => refreshCard(p.id));
+  products.forEach(p => {
+    if (p.variants?.length) updateVariantBadge(p.id);
+    else refreshCard(p.id);
+  });
   syncStickyFooter();
 
   document.getElementById('customerName').value    = '';

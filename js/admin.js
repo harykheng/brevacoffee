@@ -175,6 +175,76 @@ function buildAdminCard(product, index) {
   return card;
 }
 
+// ================================================================
+// VARIANT BUILDER
+// ================================================================
+
+function addVariantGroup() {
+  const list  = document.getElementById('variantGroups');
+  const group = document.createElement('div');
+  group.className = 'variant-group';
+  group.innerHTML = `
+    <div class="variant-group-head">
+      <input type="text" class="variant-group-name form-input" placeholder="Nama varian (contoh: Ukuran)">
+      <button type="button" class="variant-group-del" onclick="this.closest('.variant-group').remove()">✕</button>
+    </div>
+    <div class="variant-opts-list"></div>
+    <button type="button" class="btn-add-variant-opt" onclick="addVariantOption(this)">+ Tambah Opsi</button>`;
+  list.appendChild(group);
+  addVariantOption(group.querySelector('.btn-add-variant-opt'));
+  group.querySelector('.variant-group-name').focus();
+}
+
+function addVariantOption(btn) {
+  const optList = btn.closest('.variant-group').querySelector('.variant-opts-list');
+  const row = document.createElement('div');
+  row.className = 'variant-opt-row';
+  row.innerHTML = `
+    <input type="text"   class="variant-opt-label form-input" placeholder="Nama opsi (contoh: Medium)">
+    <div class="variant-opt-price-wrap">
+      <span class="variant-opt-plus">+Rp</span>
+      <input type="number" class="variant-opt-price form-input" placeholder="0" min="0" step="500" value="0">
+    </div>
+    <button type="button" class="variant-opt-del" onclick="this.closest('.variant-opt-row').remove()">✕</button>`;
+  optList.appendChild(row);
+  row.querySelector('.variant-opt-label').focus();
+}
+
+function getVariantsFromForm() {
+  const result = [];
+  document.querySelectorAll('#variantGroups .variant-group').forEach(g => {
+    const name = g.querySelector('.variant-group-name').value.trim();
+    if (!name) return;
+    const options = [];
+    g.querySelectorAll('.variant-opt-row').forEach(r => {
+      const label = r.querySelector('.variant-opt-label').value.trim();
+      const price = parseInt(r.querySelector('.variant-opt-price').value, 10) || 0;
+      if (label) options.push({ label, price });
+    });
+    if (options.length) result.push({ name, options });
+  });
+  return result;
+}
+
+function populateVariantGroups(variants) {
+  const list = document.getElementById('variantGroups');
+  list.innerHTML = '';
+  if (!variants?.length) return;
+  variants.forEach(v => {
+    addVariantGroup();
+    const group = list.lastElementChild;
+    group.querySelector('.variant-group-name').value = v.name;
+    const optList = group.querySelector('.variant-opts-list');
+    optList.innerHTML = '';
+    v.options.forEach(opt => {
+      addVariantOption(group.querySelector('.btn-add-variant-opt'));
+      const row = optList.lastElementChild;
+      row.querySelector('.variant-opt-label').value = opt.label;
+      row.querySelector('.variant-opt-price').value = opt.price || 0;
+    });
+  });
+}
+
 // ---- PRODUCT FORM ----
 function openProductForm(productId = null) {
   editingProductId = productId;
@@ -185,6 +255,7 @@ function openProductForm(productId = null) {
   document.getElementById('productId').value       = '';
   document.getElementById('existingImageUrl').value = '';
   document.getElementById('toggleVisible').checked  = true;
+  document.getElementById('variantGroups').innerHTML = '';
   resetImageUpload();
 
   if (productId) {
@@ -203,6 +274,7 @@ function openProductForm(productId = null) {
       document.getElementById('existingImageUrl').value = p.image_url;
       showImagePreview(p.image_url);
     }
+    populateVariantGroups(p.variants || []);
   } else {
     document.getElementById('productFormTitle').textContent = 'Tambah Produk';
   }
@@ -317,7 +389,8 @@ async function saveProduct(event) {
       imageUrl = urlData.publicUrl;
     }
 
-    const payload = { name, price, image_url: imageUrl, is_new: isNew, is_bestseller: isBestseller, is_visible: isVisible };
+    const variants = getVariantsFromForm();
+    const payload  = { name, price, image_url: imageUrl, is_new: isNew, is_bestseller: isBestseller, is_visible: isVisible, variants };
 
     if (productId) {
       const { error } = await supabaseClient.from('products').update(payload).eq('id', productId);

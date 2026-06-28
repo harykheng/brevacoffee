@@ -301,6 +301,43 @@
     </div>
   </div>
 
+  <!-- VARIANT SELECTION SHEET -->
+  <div class="variant-overlay" id="variantOverlay" onclick="closeVariantSheet()">
+    <div class="variant-sheet" id="variantSheet" onclick="event.stopPropagation()">
+      <div class="variant-sheet-drag"></div>
+
+      <div class="variant-sheet-header">
+        <div class="variant-sheet-product">
+          <div class="variant-sheet-img-wrap">
+            <img class="variant-sheet-img" id="vsImg" src="" alt="" style="display:none">
+            <span class="variant-sheet-img-ph" id="vsImgPh">☕</span>
+          </div>
+          <div class="variant-sheet-info">
+            <div class="variant-sheet-name" id="vsName"></div>
+            <div class="variant-sheet-price" id="vsPrice"></div>
+          </div>
+        </div>
+        <button class="variant-sheet-close" onclick="closeVariantSheet()" aria-label="Tutup">✕</button>
+      </div>
+
+      <div class="variant-sheet-body" id="vsBody"></div>
+
+      <div class="variant-sheet-footer">
+        <div class="vs-qty-row">
+          <span class="vs-qty-label">Jumlah</span>
+          <div class="vs-qty-ctrl">
+            <button class="qty-btn minus" onclick="changeVsQty(-1)" aria-label="Kurangi">−</button>
+            <span class="qty-display" id="vsQtyDisplay">1</span>
+            <button class="qty-btn plus"  onclick="changeVsQty(1)"  aria-label="Tambah">+</button>
+          </div>
+        </div>
+        <button class="btn btn-primary vs-add-btn" onclick="confirmVariantAdd()">
+          Tambah ke Keranjang — <span id="vsTotalPrice">Rp 0</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- TOAST -->
   <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
