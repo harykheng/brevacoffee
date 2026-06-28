@@ -311,6 +311,16 @@
           </div>
         </div>
 
+        <!-- Varian Produk -->
+        <div class="form-group">
+          <div class="variant-builder-header">
+            <label style="margin-bottom:0">Varian Produk <span style="font-weight:500;color:var(--text-soft)">(opsional)</span></label>
+            <button type="button" class="btn-add-variant-group" onclick="addVariantGroup()">+ Tambah Varian</button>
+          </div>
+          <p class="form-hint" style="margin-top:4px;margin-bottom:10px">Contoh: Ukuran (S/M/L), Suhu (Hot/Iced)</p>
+          <div id="variantGroups"></div>
+        </div>
+
         <div class="form-actions">
           <button type="button" class="btn btn-secondary" onclick="closeProductForm()">Batal</button>
           <button type="submit" class="btn btn-primary" id="saveProductBtn">Simpan Produk</button>
