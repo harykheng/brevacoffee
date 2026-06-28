@@ -225,7 +225,16 @@
         <div id="coDeliveryInput" style="display:none">
           <div class="form-group" style="margin-top:14px;margin-bottom:0">
             <label for="customerAddress">Alamat Pengiriman *</label>
-            <textarea id="customerAddress" placeholder="Tulis alamat lengkap + patokan..." rows="3"></textarea>
+            <div class="address-input-wrap">
+              <textarea id="customerAddress" placeholder="Tulis alamat lengkap + patokan..." rows="3"></textarea>
+              <button type="button" class="btn-use-location" id="btnUseLocation" onclick="useMyLocation()">
+                <span class="btn-loc-icon">📍</span>
+                <span class="btn-loc-text">Gunakan Lokasi Saya</span>
+              </button>
+              <a class="address-maps-verify" id="addressMapsVerify" href="#" target="_blank" rel="noopener" style="display:none">
+                Verifikasi di Google Maps →
+              </a>
+            </div>
           </div>
         </div>
       </div>

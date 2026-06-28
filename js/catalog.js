@@ -339,6 +339,9 @@ function goBackFromCheckout() {
   document.getElementById('step3').classList.remove('active');
   document.getElementById('step2').classList.add('active');
   window.scrollTo(0, 0);
+  // Reset location button state
+  const btn = document.getElementById('btnUseLocation');
+  if (btn) btn.querySelector('.btn-loc-text').textContent = 'Gunakan Lokasi Saya';
 }
 
 function renderCheckoutStep() {
@@ -384,6 +387,70 @@ function renderCheckoutStep() {
   }).join('');
 
   document.getElementById('coTotalAmount').textContent = formatPrice(cartTotal());
+}
+
+// ================================================================
+// GEOLOCATION — delivery address
+// ================================================================
+
+async function useMyLocation() {
+  const btn      = document.getElementById('btnUseLocation');
+  const textarea = document.getElementById('customerAddress');
+  const verify   = document.getElementById('addressMapsVerify');
+
+  if (!navigator.geolocation) {
+    showToast('Browser kamu tidak mendukung GPS', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.querySelector('.btn-loc-text').textContent = 'Mendeteksi lokasi...';
+
+  navigator.geolocation.getCurrentPosition(
+    async ({ coords }) => {
+      const { latitude: lat, longitude: lng } = coords;
+
+      // Show maps verify link immediately
+      verify.href = `https://maps.google.com/?q=${lat},${lng}`;
+      verify.style.display = 'inline-flex';
+
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`,
+          { headers: { 'Accept-Language': 'id', 'User-Agent': 'BrevaCoffee/1.0' } }
+        );
+        const data = await res.json();
+
+        const addr = data.address || {};
+        const parts = [
+          addr.road && (addr.house_number ? `${addr.road} No.${addr.house_number}` : addr.road),
+          addr.suburb || addr.neighbourhood || addr.village,
+          addr.city_district || addr.county,
+          addr.city || addr.town || addr.municipality,
+        ].filter(Boolean);
+
+        textarea.value = parts.join(', ');
+        showToast('Lokasi berhasil dideteksi! Cek dan edit jika perlu.', 'success');
+      } catch {
+        // Nominatim failed — fill coordinates as fallback
+        textarea.value = `Koordinat: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        showToast('Lokasi terdeteksi. Silakan edit alamat lengkapnya ya.', 'info');
+      }
+
+      btn.querySelector('.btn-loc-text').textContent = 'Perbarui Lokasi';
+      btn.disabled = false;
+    },
+    (err) => {
+      btn.querySelector('.btn-loc-text').textContent = 'Gunakan Lokasi Saya';
+      btn.disabled = false;
+
+      const msg = err.code === 1
+        ? 'Izin lokasi ditolak. Aktifkan di pengaturan browser.'
+        : 'Gagal mendapatkan lokasi. Coba lagi ya!';
+      showToast(msg, 'error');
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
 }
 
 function submitOrder() {
@@ -438,7 +505,13 @@ function submitOrder() {
   document.getElementById('customerName').value    = '';
   document.getElementById('customerWA').value      = '';
   document.getElementById('customerNote').value    = '';
-  if (orderType === 'delivery') document.getElementById('customerAddress').value = '';
+  if (orderType === 'delivery') {
+    document.getElementById('customerAddress').value = '';
+    const verify = document.getElementById('addressMapsVerify');
+    if (verify) { verify.style.display = 'none'; verify.href = '#'; }
+    const btn = document.getElementById('btnUseLocation');
+    if (btn) btn.querySelector('.btn-loc-text').textContent = 'Gunakan Lokasi Saya';
+  }
 
   // Go back to step 1 for a fresh order
   document.getElementById('step3').classList.remove('active');

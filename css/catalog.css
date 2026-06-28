@@ -615,6 +615,47 @@
 
 .co-pickup-addr { font-size: 13px; font-weight: 500; color: var(--text-mid); line-height: 1.5; margin-top: 4px; }
 
+/* ---- DELIVERY ADDRESS INPUT ---- */
+.address-input-wrap { display: flex; flex-direction: column; gap: 8px; }
+
+.btn-use-location {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: var(--latte-xlight);
+  color: var(--primary);
+  border: 1.5px solid var(--latte-light);
+  border-radius: var(--radius-md);
+  font-family: 'Nunito', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  align-self: flex-start;
+}
+
+.btn-use-location:hover  { background: var(--latte-light); }
+.btn-use-location:active { transform: scale(0.97); }
+.btn-use-location:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-loc-icon { font-size: 15px; line-height: 1; }
+
+.address-maps-verify {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1a73e8;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.address-maps-verify:hover { text-decoration: underline; }
+
 /* ---- CO ITEMS LIST ---- */
 .co-item {
   display: flex;
