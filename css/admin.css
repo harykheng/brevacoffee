@@ -914,3 +914,20 @@ img.admin-product-img { font-size: inherit; }
     border-top: 2px solid #000;
   }
 }
+
+/* ---- Pending order styles ---- */
+.order-card-pending { border-left: 4px solid #f59e0b; }
+.badge-pending { background: #fef3c7; color: #92400e; }
+
+.btn-confirm-quick {
+  background: #22c55e;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-confirm-quick:hover { background: #16a34a; }

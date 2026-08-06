@@ -699,7 +699,7 @@ async function useMyLocation() {
   );
 }
 
-function submitOrder() {
+async function submitOrder() {
   const name    = document.getElementById('customerName').value.trim();
   const wa      = document.getElementById('customerWA').value.trim();
   const note    = document.getElementById('customerNote').value.trim();
@@ -723,17 +723,21 @@ function submitOrder() {
     return;
   }
 
-  const items     = Object.entries(cart);
-  const rawTotal  = cartTotal();
-  const discount  = getDiscountAmount();
-  const finalTotal = cartFinalTotal();
-  const typeLabel = orderType === 'pickup' ? 'Pickup' : 'Delivery';
+  const sendBtn  = document.querySelector('.btn-wa-send');
+  if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Mengirim...'; }
 
+  const rawTotal   = cartTotal();
+  const discount   = getDiscountAmount();
+  const finalTotal = cartFinalTotal();
+  const typeLabel  = orderType === 'pickup' ? 'Pickup' : 'Delivery';
+  const orderNum   = `BRV-${Date.now().toString(36).toUpperCase().slice(-5)}`;
+
+  // Build clean WA message — no admin links, order number for cross-reference
   let msg = `Halo *${STORE_NAME}*! 😊\n\n`;
-  msg += `*Pesanan:*\n`;
-  items.forEach(([, { product, qty, variantLabels, extraPrice = 0 }], i) => {
-    const unitPrice   = product.price + extraPrice;
-    const variantStr  = variantLabels?.length ? ` (${variantLabels.join(', ')})` : '';
+  msg += `*Pesanan #${orderNum}:*\n`;
+  Object.entries(cart).forEach(([, { product, qty, variantLabels, extraPrice = 0 }], i) => {
+    const unitPrice  = product.price + extraPrice;
+    const variantStr = variantLabels?.length ? ` (${variantLabels.join(', ')})` : '';
     msg += `${i + 1}. ${product.name}${variantStr} ×${qty} — ${formatPrice(unitPrice * qty)}\n`;
   });
   if (discount > 0) {
@@ -751,53 +755,62 @@ function submitOrder() {
   if (orderType === 'delivery') msg += `Alamat: ${address}\n`;
   if (note) msg += `Catatan: ${note}\n`;
 
-  // Generate confirm link for admin — order only saved to DB after admin clicks this
-  const orderNum = `BRV-${Date.now().toString(36).toUpperCase().slice(-5)}`;
-  const orderPayload = {
-    n: orderNum, cn: name, wa, t: orderType, d: selectedDate, dl: selectedDateLabel,
-    addr: orderType === 'delivery' ? address : '', note,
-    items: Object.entries(cart).map(([, { product, qty, variantLabels, extraPrice = 0 }]) => ({
-      nm: product.name, qty, vl: variantLabels || [],
-      up: product.price + (extraPrice || 0),
-      sub: (product.price + (extraPrice || 0)) * qty,
-    })),
-    sub: rawTotal, pc: activePromo?.code || null, disc: discount, total: finalTotal, ts: Date.now(),
-  };
   try {
-    const bytes   = new TextEncoder().encode(JSON.stringify(orderPayload));
-    const encoded = btoa(Array.from(bytes, b => String.fromCharCode(b)).join(''));
-    const confirmUrl = `${window.location.origin}/admin.html?order=${encodeURIComponent(encoded)}`;
-    msg += `\n\n🔗 *Link konfirmasi (admin):*\n${confirmUrl}`;
-  } catch (_) {}
+    // Save to DB as pending — only becomes confirmed after admin confirms from dashboard
+    const { error } = await supabaseClient.from('orders').insert({
+      order_number:    orderNum,
+      customer_name:   name,
+      customer_wa:     wa,
+      order_type:      orderType,
+      order_date:      selectedDate,
+      order_date_label: selectedDateLabel,
+      delivery_address: orderType === 'delivery' ? address : null,
+      note:            note || null,
+      items: Object.entries(cart).map(([, { product, qty, variantLabels, extraPrice = 0 }]) => ({
+        nm: product.name, qty, vl: variantLabels || [],
+        up: product.price + (extraPrice || 0),
+        sub: (product.price + (extraPrice || 0)) * qty,
+      })),
+      subtotal:        rawTotal,
+      promo_code:      activePromo?.code || null,
+      discount_amount: discount,
+      total:           finalTotal,
+      status:          'pending',
+    });
+    if (error) throw error;
 
-  window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(msg)}`, '_blank');
+    // Open WA only after order is successfully recorded
+    window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(msg)}`, '_blank');
 
-  // Reset after send
-  cart = {};
-  activePromo = null;
-  products.forEach(p => {
-    if (p.variants?.length) updateVariantBadge(p.id);
-    else refreshCard(p.id);
-  });
-  syncStickyFooter();
+    // Reset
+    cart = {};
+    activePromo = null;
+    products.forEach(p => {
+      if (p.variants?.length) updateVariantBadge(p.id);
+      else refreshCard(p.id);
+    });
+    syncStickyFooter();
+    document.getElementById('customerName').value = '';
+    document.getElementById('customerWA').value   = '';
+    document.getElementById('customerNote').value = '';
+    if (orderType === 'delivery') {
+      document.getElementById('customerAddress').value = '';
+      const verify = document.getElementById('addressMapsVerify');
+      if (verify) { verify.style.display = 'none'; verify.href = '#'; }
+      const locBtn = document.getElementById('btnUseLocation');
+      if (locBtn) locBtn.querySelector('.btn-loc-text').textContent = 'Gunakan Lokasi Saya';
+    }
+    document.getElementById('step3').classList.remove('active');
+    document.getElementById('step1').classList.add('active');
+    window.scrollTo(0, 0);
+    showToast('Pesanan terkirim! Tunggu konfirmasi kami ya 🎉', 'success');
 
-  document.getElementById('customerName').value    = '';
-  document.getElementById('customerWA').value      = '';
-  document.getElementById('customerNote').value    = '';
-  if (orderType === 'delivery') {
-    document.getElementById('customerAddress').value = '';
-    const verify = document.getElementById('addressMapsVerify');
-    if (verify) { verify.style.display = 'none'; verify.href = '#'; }
-    const btn = document.getElementById('btnUseLocation');
-    if (btn) btn.querySelector('.btn-loc-text').textContent = 'Gunakan Lokasi Saya';
+  } catch (err) {
+    console.error('Submit order error:', err);
+    showToast('Gagal mengirim pesanan. Coba lagi ya!', 'error');
+  } finally {
+    if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Kirim via WhatsApp 📱'; }
   }
-
-  // Go back to step 1 for a fresh order
-  document.getElementById('step3').classList.remove('active');
-  document.getElementById('step1').classList.add('active');
-  window.scrollTo(0, 0);
-
-  showToast('Pesanan terkirim! Tunggu konfirmasi kami ya 🎉', 'success');
 }
 
 // ================================================================
