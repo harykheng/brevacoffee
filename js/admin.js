@@ -12,8 +12,7 @@ let selectedFile       = null;
 let selectedLogoFile   = null;
 let selectedBannerFile = null;
 let confirmCallback    = null;
-let pendingConfirmData = null;
-let currentOrderFilter = 'confirmed';
+let currentOrderFilter = 'pending';
 let currentDetailOrder = null;
 
 // ---- HELPERS ----
@@ -62,9 +61,6 @@ function showDashboard(user) {
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('adminLayout').classList.add('active');
   document.getElementById('adminUserEmail').textContent = user.email;
-  if (pendingConfirmData) {
-    setTimeout(() => openOrderConfirmModal(pendingConfirmData), 300);
-  }
 }
 
 async function handleLogin(event) {
@@ -818,10 +814,6 @@ document.getElementById('confirmOverlay').addEventListener('click', function (e)
   if (e.target === this) closeConfirm();
 });
 
-document.getElementById('orderConfirmModal').addEventListener('click', function (e) {
-  if (e.target === this) closeOrderConfirmModal();
-});
-
 document.getElementById('orderDetailModal').addEventListener('click', function (e) {
   if (e.target === this) closeOrderDetail();
 });
@@ -834,6 +826,8 @@ supabaseClient.auth.onAuthStateChange((event) => {
 // ================================================================
 // ORDERS
 // ================================================================
+
+const PENDING_EXPIRE_MS = 24 * 60 * 60 * 1000;
 
 async function loadOrders() {
   const loadingEl = document.getElementById('ordersLoadingState');
@@ -852,12 +846,21 @@ async function loadOrders() {
 
     if (error) throw error;
 
-    adminOrders = data || [];
+    // Hide expired pending orders (> 24h without confirmation)
+    const now = Date.now();
+    adminOrders = (data || []).filter(o => {
+      if (o.status !== 'pending') return true;
+      return now - new Date(o.created_at).getTime() < PENDING_EXPIRE_MS;
+    });
+
     loadingEl.style.display = 'none';
 
-    const total = adminOrders.length;
+    const pendingCount = adminOrders.filter(o => o.status === 'pending').length;
+    const totalCount   = adminOrders.length;
     document.getElementById('ordersCount').textContent =
-      total === 0 ? '0 pesanan' : `${total} pesanan`;
+      totalCount === 0 ? '0 pesanan'
+        : pendingCount > 0 ? `${totalCount} pesanan · ${pendingCount} menunggu konfirmasi`
+        : `${totalCount} pesanan`;
 
     filterOrders(currentOrderFilter);
 
@@ -902,7 +905,8 @@ function buildOrderCard(order) {
   });
 
   const statusMap = {
-    confirmed: '<span class="order-status-badge badge-confirmed">🆕 Baru</span>',
+    pending:   '<span class="order-status-badge badge-pending">🕐 Menunggu</span>',
+    confirmed: '<span class="order-status-badge badge-confirmed">🆕 Diproses</span>',
     done:      '<span class="order-status-badge badge-done">✅ Selesai</span>',
     cancelled: '<span class="order-status-badge badge-cancelled">❌ Dibatalkan</span>',
   };
@@ -911,6 +915,10 @@ function buildOrderCard(order) {
   const itemsPreview = items.slice(0, 2)
     .map(it => `${it.nm} ×${it.qty}`)
     .join(', ') + (items.length > 2 ? `, +${items.length - 2} lainnya` : '');
+
+  const confirmBtn = order.status === 'pending'
+    ? `<button class="btn-sm btn-confirm-quick" onclick="changeOrderStatus('confirmed','${order.id}')">✅ Konfirmasi</button>`
+    : '';
 
   card.innerHTML = `
     <div class="order-card-top">
@@ -927,6 +935,7 @@ function buildOrderCard(order) {
       </div>
     </div>
     <div class="order-card-actions">
+      ${confirmBtn}
       <button class="btn-sm btn-edit" onclick="openOrderDetail('${order.id}')">📋 Detail</button>
     </div>`;
 
@@ -941,10 +950,15 @@ function openOrderDetail(orderId) {
   document.getElementById('orderDetailTitle').textContent = `Pesanan ${o.order_number}`;
   document.getElementById('orderDetailContent').innerHTML = renderOrderDetailHTML(o);
 
+  const isPending   = o.status === 'pending';
   const isDone      = o.status === 'done';
   const isCancelled = o.status === 'cancelled';
-  document.getElementById('btnMarkDone').style.display   = isDone      ? 'none' : '';
-  document.getElementById('btnMarkCancel').style.display = isCancelled ? 'none' : '';
+
+  // pending: Konfirmasi + Batalkan | confirmed: Print + Selesai + Batalkan | done/cancelled: Print only
+  document.getElementById('btnConfirmOrder').style.display = isPending                    ? '' : 'none';
+  document.getElementById('btnMarkDone').style.display     = (!isPending && !isDone && !isCancelled) ? '' : 'none';
+  document.getElementById('btnMarkCancel').style.display   = (!isCancelled && !isDone)    ? '' : 'none';
+  document.getElementById('btnPrintLabel').style.display   = !isPending                   ? '' : 'none';
 
   document.getElementById('orderDetailModal').classList.add('active');
   document.body.style.overflow = 'hidden';
@@ -997,19 +1011,22 @@ function renderOrderDetailHTML(o) {
     </div>`;
 }
 
-async function changeOrderStatus(newStatus) {
-  if (!currentDetailOrder) return;
-  const orderId = currentDetailOrder.id;
+async function changeOrderStatus(newStatus, orderId = null) {
+  const order = orderId
+    ? adminOrders.find(o => o.id === orderId)
+    : currentDetailOrder;
+  if (!order) return;
+
+  const labelMap = { confirmed: 'Dikonfirmasi', done: 'Selesai', cancelled: 'Dibatalkan' };
   try {
     const { error } = await supabaseClient
       .from('orders')
       .update({ status: newStatus, updated_at: new Date().toISOString() })
-      .eq('id', orderId);
+      .eq('id', order.id);
     if (error) throw error;
 
-    const label = newStatus === 'done' ? 'Selesai' : 'Dibatalkan';
-    showToast(`Status pesanan diubah ke ${label}`, 'success');
-    closeOrderDetail();
+    showToast(`Pesanan ${labelMap[newStatus] || newStatus} ✅`, 'success');
+    if (!orderId) closeOrderDetail();
     await loadOrders();
   } catch (err) {
     showToast('Gagal ubah status: ' + err.message, 'error');
@@ -1044,117 +1061,9 @@ function openPrintLabel() {
   window.print();
 }
 
-function openOrderConfirmModal(data) {
-  pendingConfirmData = data;
-  const items = Array.isArray(data.items) ? data.items : [];
-  const itemRows = items.map(it => {
-    const v = it.vl?.length ? ` (${it.vl.join(', ')})` : '';
-    return `<div class="order-detail-item"><span>${escapeHTML(it.nm)}${escapeHTML(v)} ×${it.qty}</span><span>${formatPrice(it.sub)}</span></div>`;
-  }).join('');
-
-  const discountRow = data.disc > 0
-    ? `<div class="order-detail-row order-detail-discount"><span>Diskon (${escapeHTML(data.pc || '')})</span><span>−${formatPrice(data.disc)}</span></div>` : '';
-
-  const addrRow = data.t === 'delivery' && data.addr
-    ? `<div class="order-detail-field"><span class="order-field-label">Alamat</span><span>${escapeHTML(data.addr)}</span></div>` : '';
-  const noteRow = data.note
-    ? `<div class="order-detail-field"><span class="order-field-label">Catatan</span><span>${escapeHTML(data.note)}</span></div>` : '';
-
-  document.getElementById('orderConfirmContent').innerHTML = `
-    <div class="order-confirm-alert">Pesanan baru menunggu konfirmasi!</div>
-    <div class="order-detail-meta">
-      <div class="order-detail-field"><span class="order-field-label">No. Pesanan</span><span>${escapeHTML(data.n)}</span></div>
-      <div class="order-detail-field"><span class="order-field-label">Nama</span><span>${escapeHTML(data.cn)}</span></div>
-      <div class="order-detail-field"><span class="order-field-label">WhatsApp</span><span>${escapeHTML(data.wa)}</span></div>
-      <div class="order-detail-field"><span class="order-field-label">Tipe</span><span>${data.t === 'pickup' ? '🏪 Pickup' : '🛵 Delivery'}</span></div>
-      <div class="order-detail-field"><span class="order-field-label">Tanggal</span><span>${escapeHTML(data.dl || data.d)}</span></div>
-      ${addrRow}${noteRow}
-    </div>
-    <div class="order-detail-items">
-      ${itemRows}
-      <div class="order-detail-divider"></div>
-      ${discountRow}
-      <div class="order-detail-row order-detail-total"><span>Total</span><span>${formatPrice(data.total)}</span></div>
-    </div>`;
-
-  document.getElementById('orderConfirmModal').classList.add('active');
-  document.body.style.overflow = 'hidden';
-}
-
-function closeOrderConfirmModal() {
-  document.getElementById('orderConfirmModal').classList.remove('active');
-  document.body.style.overflow = '';
-  pendingConfirmData = null;
-  // Clean URL so link can't be re-clicked
-  if (window.history.replaceState) {
-    window.history.replaceState({}, '', window.location.pathname);
-  }
-}
-
-async function confirmOrder() {
-  if (!pendingConfirmData) return;
-  const data = pendingConfirmData;
-  const btn  = document.getElementById('btnConfirmOrder');
-  btn.textContent = 'Menyimpan...';
-  btn.disabled    = true;
-
-  try {
-    const payload = {
-      order_number:    data.n,
-      customer_name:   data.cn,
-      customer_wa:     data.wa,
-      order_type:      data.t,
-      order_date:      data.d,
-      order_date_label: data.dl || null,
-      delivery_address: data.addr || null,
-      note:            data.note || null,
-      items:           data.items,
-      subtotal:        data.sub,
-      promo_code:      data.pc || null,
-      discount_amount: data.disc || 0,
-      total:           data.total,
-      status:          'confirmed',
-    };
-
-    const { error } = await supabaseClient.from('orders').insert(payload);
-    if (error) {
-      if (error.code === '23505') {
-        showToast('Pesanan ini sudah pernah dikonfirmasi sebelumnya.', 'error');
-        closeOrderConfirmModal();
-        return;
-      }
-      throw error;
-    }
-
-    showToast('Pesanan berhasil dikonfirmasi dan disimpan! ✅', 'success');
-    closeOrderConfirmModal();
-    switchTab('orders');
-
-  } catch (err) {
-    console.error('Confirm order error:', err);
-    showToast('Gagal menyimpan pesanan: ' + (err.message || 'Coba lagi'), 'error');
-  } finally {
-    btn.textContent = 'Konfirmasi & Simpan';
-    btn.disabled    = false;
-  }
-}
 
 // ---- INIT ----
 document.addEventListener('DOMContentLoaded', () => {
-  // Parse ?order= param — decode order payload from WA confirm link
-  try {
-    const params  = new URLSearchParams(window.location.search);
-    const encoded = params.get('order');
-    if (encoded) {
-      const decoded  = atob(decodeURIComponent(encoded));
-      const bytes    = Uint8Array.from(decoded, c => c.charCodeAt(0));
-      const jsonStr  = new TextDecoder().decode(bytes);
-      pendingConfirmData = JSON.parse(jsonStr);
-    }
-  } catch (_) {
-    pendingConfirmData = null;
-  }
-
   initDragDrop();
   checkAuth();
 });

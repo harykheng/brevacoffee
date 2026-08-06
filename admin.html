@@ -128,10 +128,11 @@
         </div>
 
         <div class="orders-filter-bar">
-          <button class="order-filter-btn active" data-filter="confirmed" onclick="filterOrders('confirmed')">🆕 Baru</button>
-          <button class="order-filter-btn" data-filter="done" onclick="filterOrders('done')">✅ Selesai</button>
+          <button class="order-filter-btn active" data-filter="pending"    onclick="filterOrders('pending')">🕐 Menunggu</button>
+          <button class="order-filter-btn" data-filter="confirmed" onclick="filterOrders('confirmed')">🆕 Diproses</button>
+          <button class="order-filter-btn" data-filter="done"      onclick="filterOrders('done')">✅ Selesai</button>
           <button class="order-filter-btn" data-filter="cancelled" onclick="filterOrders('cancelled')">❌ Dibatalkan</button>
-          <button class="order-filter-btn" data-filter="all" onclick="filterOrders('all')">Semua</button>
+          <button class="order-filter-btn" data-filter="all"       onclick="filterOrders('all')">Semua</button>
         </div>
 
         <div id="ordersLoadingState" class="loading-state" style="display:none">
@@ -462,21 +463,6 @@
     </div>
   </div>
 
-  <!-- ===== ORDER CONFIRM MODAL (from WA link) ===== -->
-  <div class="modal-overlay" id="orderConfirmModal" role="dialog" aria-label="Konfirmasi pesanan baru">
-    <div class="modal-box order-confirm-box">
-      <div class="modal-header">
-        <h3>📦 Konfirmasi Pesanan Baru</h3>
-        <button class="modal-close" onclick="closeOrderConfirmModal()" aria-label="Tutup">✕</button>
-      </div>
-      <div id="orderConfirmContent"></div>
-      <div class="form-actions" style="margin-top:16px">
-        <button class="btn btn-secondary" onclick="closeOrderConfirmModal()">Batal</button>
-        <button class="btn btn-primary"   id="btnConfirmOrder" onclick="confirmOrder()">✅ Konfirmasi &amp; Simpan</button>
-      </div>
-    </div>
-  </div>
-
   <!-- ===== ORDER DETAIL MODAL ===== -->
   <div class="modal-overlay" id="orderDetailModal" role="dialog" aria-label="Detail pesanan">
     <div class="modal-box order-detail-box">
@@ -487,9 +473,10 @@
       <div id="orderDetailContent"></div>
       <div class="order-detail-actions">
         <button class="btn btn-secondary" onclick="closeOrderDetail()">Tutup</button>
-        <button class="btn btn-outline"   onclick="openPrintLabel()">🖨️ Print Label</button>
-        <button class="btn btn-success"   id="btnMarkDone"   onclick="changeOrderStatus('done')">✅ Selesai</button>
-        <button class="btn btn-danger"    id="btnMarkCancel" onclick="changeOrderStatus('cancelled')">❌ Batalkan</button>
+        <button class="btn btn-outline"   id="btnPrintLabel"   onclick="openPrintLabel()">🖨️ Print Label</button>
+        <button class="btn btn-danger"    id="btnMarkCancel"   onclick="changeOrderStatus('cancelled')">❌ Batalkan</button>
+        <button class="btn btn-success"   id="btnMarkDone"     onclick="changeOrderStatus('done')">✅ Selesai</button>
+        <button class="btn btn-primary"   id="btnConfirmOrder" onclick="changeOrderStatus('confirmed')">✅ Konfirmasi</button>
       </div>
     </div>
   </div>
