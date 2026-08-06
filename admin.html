@@ -64,6 +64,7 @@
       <div class="admin-tabs">
         <button class="admin-tab active" data-tab="products" onclick="switchTab('products')">🛍 Produk</button>
         <button class="admin-tab" data-tab="promo" onclick="switchTab('promo')">🎟 Promo</button>
+        <button class="admin-tab" data-tab="orders" onclick="switchTab('orders')">📦 Pesanan</button>
         <button class="admin-tab" data-tab="settings" onclick="switchTab('settings')">⚙️ Pengaturan</button>
       </div>
 
@@ -115,6 +116,36 @@
         </div>
 
         <div class="promos-list" id="promosList"></div>
+      </div>
+
+      <!-- Tab: Pesanan -->
+      <div id="tab-orders" class="tab-panel" style="display:none">
+        <div class="admin-page-header">
+          <div>
+            <h2 class="admin-page-title">Pesanan Masuk</h2>
+            <p class="admin-page-subtitle" id="ordersCount">Memuat...</p>
+          </div>
+        </div>
+
+        <div class="orders-filter-bar">
+          <button class="order-filter-btn active" data-filter="confirmed" onclick="filterOrders('confirmed')">🆕 Baru</button>
+          <button class="order-filter-btn" data-filter="done" onclick="filterOrders('done')">✅ Selesai</button>
+          <button class="order-filter-btn" data-filter="cancelled" onclick="filterOrders('cancelled')">❌ Dibatalkan</button>
+          <button class="order-filter-btn" data-filter="all" onclick="filterOrders('all')">Semua</button>
+        </div>
+
+        <div id="ordersLoadingState" class="loading-state" style="display:none">
+          <div class="spinner"></div>
+          <span>Memuat pesanan...</span>
+        </div>
+
+        <div class="empty-admin-state" id="emptyOrdersState">
+          <span class="empty-admin-icon">📦</span>
+          <h3>Belum ada pesanan</h3>
+          <p>Pesanan yang dikonfirmasi dari WhatsApp akan muncul di sini</p>
+        </div>
+
+        <div class="orders-list" id="ordersList"></div>
       </div>
 
       <!-- Tab: Pengaturan -->
@@ -430,6 +461,41 @@
       </form>
     </div>
   </div>
+
+  <!-- ===== ORDER CONFIRM MODAL (from WA link) ===== -->
+  <div class="modal-overlay" id="orderConfirmModal" role="dialog" aria-label="Konfirmasi pesanan baru">
+    <div class="modal-box order-confirm-box">
+      <div class="modal-header">
+        <h3>📦 Konfirmasi Pesanan Baru</h3>
+        <button class="modal-close" onclick="closeOrderConfirmModal()" aria-label="Tutup">✕</button>
+      </div>
+      <div id="orderConfirmContent"></div>
+      <div class="form-actions" style="margin-top:16px">
+        <button class="btn btn-secondary" onclick="closeOrderConfirmModal()">Batal</button>
+        <button class="btn btn-primary"   id="btnConfirmOrder" onclick="confirmOrder()">✅ Konfirmasi &amp; Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ORDER DETAIL MODAL ===== -->
+  <div class="modal-overlay" id="orderDetailModal" role="dialog" aria-label="Detail pesanan">
+    <div class="modal-box order-detail-box">
+      <div class="modal-header">
+        <h3 id="orderDetailTitle">Detail Pesanan</h3>
+        <button class="modal-close" onclick="closeOrderDetail()" aria-label="Tutup">✕</button>
+      </div>
+      <div id="orderDetailContent"></div>
+      <div class="order-detail-actions">
+        <button class="btn btn-secondary" onclick="closeOrderDetail()">Tutup</button>
+        <button class="btn btn-outline"   onclick="openPrintLabel()">🖨️ Print Label</button>
+        <button class="btn btn-success"   id="btnMarkDone"   onclick="changeOrderStatus('done')">✅ Selesai</button>
+        <button class="btn btn-danger"    id="btnMarkCancel" onclick="changeOrderStatus('cancelled')">❌ Batalkan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRINT LABEL (hidden; only shown via window.print()) -->
+  <div id="printLabel" style="display:none"></div>
 
   <!-- ===== CONFIRM DIALOG ===== -->
   <div class="confirm-overlay" id="confirmOverlay" role="alertdialog" aria-label="Konfirmasi hapus">
