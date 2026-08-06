@@ -751,6 +751,25 @@ function submitOrder() {
   if (orderType === 'delivery') msg += `Alamat: ${address}\n`;
   if (note) msg += `Catatan: ${note}\n`;
 
+  // Generate confirm link for admin — order only saved to DB after admin clicks this
+  const orderNum = `BRV-${Date.now().toString(36).toUpperCase().slice(-5)}`;
+  const orderPayload = {
+    n: orderNum, cn: name, wa, t: orderType, d: selectedDate, dl: selectedDateLabel,
+    addr: orderType === 'delivery' ? address : '', note,
+    items: Object.entries(cart).map(([, { product, qty, variantLabels, extraPrice = 0 }]) => ({
+      nm: product.name, qty, vl: variantLabels || [],
+      up: product.price + (extraPrice || 0),
+      sub: (product.price + (extraPrice || 0)) * qty,
+    })),
+    sub: rawTotal, pc: activePromo?.code || null, disc: discount, total: finalTotal, ts: Date.now(),
+  };
+  try {
+    const bytes   = new TextEncoder().encode(JSON.stringify(orderPayload));
+    const encoded = btoa(Array.from(bytes, b => String.fromCharCode(b)).join(''));
+    const confirmUrl = `${window.location.origin}/admin.html?order=${encodeURIComponent(encoded)}`;
+    msg += `\n\n🔗 *Link konfirmasi (admin):*\n${confirmUrl}`;
+  } catch (_) {}
+
   window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(msg)}`, '_blank');
 
   // Reset after send

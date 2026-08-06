@@ -5,12 +5,16 @@
 // ---- STATE ----
 let adminProducts      = [];
 let adminPromos        = [];
+let adminOrders        = [];
 let editingProductId   = null;
 let editingPromoId     = null;
 let selectedFile       = null;
 let selectedLogoFile   = null;
 let selectedBannerFile = null;
 let confirmCallback    = null;
+let pendingConfirmData = null;
+let currentOrderFilter = 'confirmed';
+let currentDetailOrder = null;
 
 // ---- HELPERS ----
 function formatPrice(price) {
@@ -58,6 +62,9 @@ function showDashboard(user) {
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('adminLayout').classList.add('active');
   document.getElementById('adminUserEmail').textContent = user.email;
+  if (pendingConfirmData) {
+    setTimeout(() => openOrderConfirmModal(pendingConfirmData), 300);
+  }
 }
 
 async function handleLogin(event) {
@@ -464,6 +471,7 @@ function switchTab(tab) {
   document.getElementById(`tab-${tab}`).style.display = '';
   if (tab === 'settings') loadSettings();
   if (tab === 'promo')    loadAdminPromos();
+  if (tab === 'orders')   loadOrders();
 }
 
 // ================================================================
@@ -810,13 +818,343 @@ document.getElementById('confirmOverlay').addEventListener('click', function (e)
   if (e.target === this) closeConfirm();
 });
 
+document.getElementById('orderConfirmModal').addEventListener('click', function (e) {
+  if (e.target === this) closeOrderConfirmModal();
+});
+
+document.getElementById('orderDetailModal').addEventListener('click', function (e) {
+  if (e.target === this) closeOrderDetail();
+});
+
 // ---- AUTH STATE LISTENER ----
 supabaseClient.auth.onAuthStateChange((event) => {
   if (event === 'SIGNED_OUT') showLogin();
 });
 
+// ================================================================
+// ORDERS
+// ================================================================
+
+async function loadOrders() {
+  const loadingEl = document.getElementById('ordersLoadingState');
+  const emptyEl   = document.getElementById('emptyOrdersState');
+  const list      = document.getElementById('ordersList');
+
+  loadingEl.style.display = 'flex';
+  emptyEl.classList.remove('visible');
+  list.innerHTML = '';
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    adminOrders = data || [];
+    loadingEl.style.display = 'none';
+
+    const total = adminOrders.length;
+    document.getElementById('ordersCount').textContent =
+      total === 0 ? '0 pesanan' : `${total} pesanan`;
+
+    filterOrders(currentOrderFilter);
+
+  } catch (err) {
+    console.error('Load orders failed:', err);
+    loadingEl.style.display = 'none';
+    showToast('Gagal memuat pesanan: ' + err.message, 'error');
+  }
+}
+
+function filterOrders(filter) {
+  currentOrderFilter = filter;
+
+  document.querySelectorAll('.order-filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === filter);
+  });
+
+  const filtered = filter === 'all'
+    ? adminOrders
+    : adminOrders.filter(o => o.status === filter);
+
+  const list    = document.getElementById('ordersList');
+  const emptyEl = document.getElementById('emptyOrdersState');
+
+  list.innerHTML = '';
+
+  if (filtered.length === 0) {
+    emptyEl.classList.add('visible');
+    return;
+  }
+  emptyEl.classList.remove('visible');
+  filtered.forEach(order => list.appendChild(buildOrderCard(order)));
+}
+
+function buildOrderCard(order) {
+  const card = document.createElement('div');
+  card.className = `order-card order-card-${order.status}`;
+
+  const typeLabel = order.order_type === 'pickup' ? '🏪 Pickup' : '🛵 Delivery';
+  const date = new Date(order.created_at).toLocaleDateString('id-ID', {
+    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+
+  const statusMap = {
+    confirmed: '<span class="order-status-badge badge-confirmed">🆕 Baru</span>',
+    done:      '<span class="order-status-badge badge-done">✅ Selesai</span>',
+    cancelled: '<span class="order-status-badge badge-cancelled">❌ Dibatalkan</span>',
+  };
+
+  const items = Array.isArray(order.items) ? order.items : [];
+  const itemsPreview = items.slice(0, 2)
+    .map(it => `${it.nm} ×${it.qty}`)
+    .join(', ') + (items.length > 2 ? `, +${items.length - 2} lainnya` : '');
+
+  card.innerHTML = `
+    <div class="order-card-top">
+      <div>
+        <div class="order-number">${escapeHTML(order.order_number)}</div>
+        <div class="order-customer">${escapeHTML(order.customer_name)} · ${escapeHTML(order.customer_wa)}</div>
+        <div class="order-meta">${typeLabel} · ${escapeHTML(order.order_date_label || order.order_date)}</div>
+        <div class="order-items-preview">${escapeHTML(itemsPreview)}</div>
+      </div>
+      <div class="order-card-right">
+        ${statusMap[order.status] || ''}
+        <div class="order-total">${formatPrice(order.total)}</div>
+        <div class="order-date">${date}</div>
+      </div>
+    </div>
+    <div class="order-card-actions">
+      <button class="btn-sm btn-edit" onclick="openOrderDetail('${order.id}')">📋 Detail</button>
+    </div>`;
+
+  return card;
+}
+
+function openOrderDetail(orderId) {
+  currentDetailOrder = adminOrders.find(o => o.id === orderId);
+  if (!currentDetailOrder) return;
+
+  const o = currentDetailOrder;
+  document.getElementById('orderDetailTitle').textContent = `Pesanan ${o.order_number}`;
+  document.getElementById('orderDetailContent').innerHTML = renderOrderDetailHTML(o);
+
+  const isDone      = o.status === 'done';
+  const isCancelled = o.status === 'cancelled';
+  document.getElementById('btnMarkDone').style.display   = isDone      ? 'none' : '';
+  document.getElementById('btnMarkCancel').style.display = isCancelled ? 'none' : '';
+
+  document.getElementById('orderDetailModal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeOrderDetail() {
+  document.getElementById('orderDetailModal').classList.remove('active');
+  document.body.style.overflow = '';
+  currentDetailOrder = null;
+}
+
+function renderOrderDetailHTML(o) {
+  const items = Array.isArray(o.items) ? o.items : [];
+  const itemRows = items.map(it => {
+    const variantStr = it.vl?.length ? ` <span class="order-variant">(${escapeHTML(it.vl.join(', '))})</span>` : '';
+    return `<div class="order-detail-item">
+      <span>${escapeHTML(it.nm)}${variantStr} ×${it.qty}</span>
+      <span>${formatPrice(it.sub)}</span>
+    </div>`;
+  }).join('');
+
+  const discountRow = o.discount_amount > 0
+    ? `<div class="order-detail-row order-detail-discount">
+        <span>Diskon (${escapeHTML(o.promo_code || '')})</span>
+        <span>−${formatPrice(o.discount_amount)}</span>
+       </div>` : '';
+
+  const addrRow = o.order_type === 'delivery' && o.delivery_address
+    ? `<div class="order-detail-field"><span class="order-field-label">Alamat</span><span>${escapeHTML(o.delivery_address)}</span></div>` : '';
+  const noteRow = o.note
+    ? `<div class="order-detail-field"><span class="order-field-label">Catatan</span><span>${escapeHTML(o.note)}</span></div>` : '';
+
+  return `
+    <div class="order-detail-meta">
+      <div class="order-detail-field"><span class="order-field-label">Nomor</span><span>${escapeHTML(o.order_number)}</span></div>
+      <div class="order-detail-field"><span class="order-field-label">Nama</span><span>${escapeHTML(o.customer_name)}</span></div>
+      <div class="order-detail-field"><span class="order-field-label">WhatsApp</span><span><a href="https://wa.me/${encodeURIComponent(o.customer_wa)}" target="_blank">${escapeHTML(o.customer_wa)}</a></span></div>
+      <div class="order-detail-field"><span class="order-field-label">Tipe</span><span>${o.order_type === 'pickup' ? '🏪 Pickup' : '🛵 Delivery'}</span></div>
+      <div class="order-detail-field"><span class="order-field-label">Tanggal</span><span>${escapeHTML(o.order_date_label || o.order_date)}</span></div>
+      ${addrRow}${noteRow}
+    </div>
+    <div class="order-detail-items">
+      ${itemRows}
+      <div class="order-detail-divider"></div>
+      ${discountRow}
+      <div class="order-detail-row order-detail-total">
+        <span>Total</span>
+        <span>${formatPrice(o.total)}</span>
+      </div>
+    </div>`;
+}
+
+async function changeOrderStatus(newStatus) {
+  if (!currentDetailOrder) return;
+  const orderId = currentDetailOrder.id;
+  try {
+    const { error } = await supabaseClient
+      .from('orders')
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq('id', orderId);
+    if (error) throw error;
+
+    const label = newStatus === 'done' ? 'Selesai' : 'Dibatalkan';
+    showToast(`Status pesanan diubah ke ${label}`, 'success');
+    closeOrderDetail();
+    await loadOrders();
+  } catch (err) {
+    showToast('Gagal ubah status: ' + err.message, 'error');
+  }
+}
+
+function openPrintLabel() {
+  if (!currentDetailOrder) return;
+  const o = currentDetailOrder;
+  const items = Array.isArray(o.items) ? o.items : [];
+  const itemLines = items.map(it => {
+    const v = it.vl?.length ? ` (${it.vl.join(', ')})` : '';
+    return `<div>${it.nm}${v} ×${it.qty}</div>`;
+  }).join('');
+
+  const labelEl = document.getElementById('printLabel');
+  labelEl.innerHTML = `
+    <div class="print-label-inner">
+      <div class="print-label-brand">☕ Breva Coffee</div>
+      <div class="print-label-order">${escapeHTML(o.order_number)}</div>
+      <div class="print-label-section">
+        <strong>Untuk:</strong> ${escapeHTML(o.customer_name)}<br>
+        <strong>WA:</strong> ${escapeHTML(o.customer_wa)}<br>
+        <strong>Tipe:</strong> ${o.order_type === 'pickup' ? 'Pickup' : 'Delivery'}<br>
+        <strong>Tanggal:</strong> ${escapeHTML(o.order_date_label || o.order_date)}
+        ${o.delivery_address ? `<br><strong>Alamat:</strong> ${escapeHTML(o.delivery_address)}` : ''}
+        ${o.note ? `<br><strong>Catatan:</strong> ${escapeHTML(o.note)}` : ''}
+      </div>
+      <div class="print-label-items">${itemLines}</div>
+      <div class="print-label-total"><strong>Total: ${formatPrice(o.total)}</strong></div>
+    </div>`;
+  window.print();
+}
+
+function openOrderConfirmModal(data) {
+  pendingConfirmData = data;
+  const items = Array.isArray(data.items) ? data.items : [];
+  const itemRows = items.map(it => {
+    const v = it.vl?.length ? ` (${it.vl.join(', ')})` : '';
+    return `<div class="order-detail-item"><span>${escapeHTML(it.nm)}${escapeHTML(v)} ×${it.qty}</span><span>${formatPrice(it.sub)}</span></div>`;
+  }).join('');
+
+  const discountRow = data.disc > 0
+    ? `<div class="order-detail-row order-detail-discount"><span>Diskon (${escapeHTML(data.pc || '')})</span><span>−${formatPrice(data.disc)}</span></div>` : '';
+
+  const addrRow = data.t === 'delivery' && data.addr
+    ? `<div class="order-detail-field"><span class="order-field-label">Alamat</span><span>${escapeHTML(data.addr)}</span></div>` : '';
+  const noteRow = data.note
+    ? `<div class="order-detail-field"><span class="order-field-label">Catatan</span><span>${escapeHTML(data.note)}</span></div>` : '';
+
+  document.getElementById('orderConfirmContent').innerHTML = `
+    <div class="order-confirm-alert">Pesanan baru menunggu konfirmasi!</div>
+    <div class="order-detail-meta">
+      <div class="order-detail-field"><span class="order-field-label">No. Pesanan</span><span>${escapeHTML(data.n)}</span></div>
+      <div class="order-detail-field"><span class="order-field-label">Nama</span><span>${escapeHTML(data.cn)}</span></div>
+      <div class="order-detail-field"><span class="order-field-label">WhatsApp</span><span>${escapeHTML(data.wa)}</span></div>
+      <div class="order-detail-field"><span class="order-field-label">Tipe</span><span>${data.t === 'pickup' ? '🏪 Pickup' : '🛵 Delivery'}</span></div>
+      <div class="order-detail-field"><span class="order-field-label">Tanggal</span><span>${escapeHTML(data.dl || data.d)}</span></div>
+      ${addrRow}${noteRow}
+    </div>
+    <div class="order-detail-items">
+      ${itemRows}
+      <div class="order-detail-divider"></div>
+      ${discountRow}
+      <div class="order-detail-row order-detail-total"><span>Total</span><span>${formatPrice(data.total)}</span></div>
+    </div>`;
+
+  document.getElementById('orderConfirmModal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeOrderConfirmModal() {
+  document.getElementById('orderConfirmModal').classList.remove('active');
+  document.body.style.overflow = '';
+  pendingConfirmData = null;
+  // Clean URL so link can't be re-clicked
+  if (window.history.replaceState) {
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+}
+
+async function confirmOrder() {
+  if (!pendingConfirmData) return;
+  const data = pendingConfirmData;
+  const btn  = document.getElementById('btnConfirmOrder');
+  btn.textContent = 'Menyimpan...';
+  btn.disabled    = true;
+
+  try {
+    const payload = {
+      order_number:    data.n,
+      customer_name:   data.cn,
+      customer_wa:     data.wa,
+      order_type:      data.t,
+      order_date:      data.d,
+      order_date_label: data.dl || null,
+      delivery_address: data.addr || null,
+      note:            data.note || null,
+      items:           data.items,
+      subtotal:        data.sub,
+      promo_code:      data.pc || null,
+      discount_amount: data.disc || 0,
+      total:           data.total,
+      status:          'confirmed',
+    };
+
+    const { error } = await supabaseClient.from('orders').insert(payload);
+    if (error) {
+      if (error.code === '23505') {
+        showToast('Pesanan ini sudah pernah dikonfirmasi sebelumnya.', 'error');
+        closeOrderConfirmModal();
+        return;
+      }
+      throw error;
+    }
+
+    showToast('Pesanan berhasil dikonfirmasi dan disimpan! ✅', 'success');
+    closeOrderConfirmModal();
+    switchTab('orders');
+
+  } catch (err) {
+    console.error('Confirm order error:', err);
+    showToast('Gagal menyimpan pesanan: ' + (err.message || 'Coba lagi'), 'error');
+  } finally {
+    btn.textContent = 'Konfirmasi & Simpan';
+    btn.disabled    = false;
+  }
+}
+
 // ---- INIT ----
 document.addEventListener('DOMContentLoaded', () => {
+  // Parse ?order= param — decode order payload from WA confirm link
+  try {
+    const params  = new URLSearchParams(window.location.search);
+    const encoded = params.get('order');
+    if (encoded) {
+      const decoded  = atob(decodeURIComponent(encoded));
+      const bytes    = Uint8Array.from(decoded, c => c.charCodeAt(0));
+      const jsonStr  = new TextDecoder().decode(bytes);
+      pendingConfirmData = JSON.parse(jsonStr);
+    }
+  } catch (_) {
+    pendingConfirmData = null;
+  }
+
   initDragDrop();
   checkAuth();
 });
