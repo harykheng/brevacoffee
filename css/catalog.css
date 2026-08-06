@@ -984,3 +984,106 @@
 .vs-qty-ctrl  { display: flex; align-items: center; gap: 14px; }
 
 .vs-add-btn { width: 100%; justify-content: center; padding: 14px; font-size: 15px; }
+
+/* ================================================================
+   PRODUCT DESCRIPTION on catalog card
+   ================================================================ */
+.product-desc {
+  font-size: 11px;
+  color: var(--text-soft);
+  font-weight: 500;
+  line-height: 1.35;
+  margin: 2px 0 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ================================================================
+   PROMO CODE — checkout section
+   ================================================================ */
+.promo-input-wrap {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.promo-input {
+  flex: 1;
+  padding: 11px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-dark);
+  background: var(--white);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.promo-input:focus { border-color: var(--primary); }
+.promo-input::placeholder { letter-spacing: 0; font-weight: 500; color: var(--text-soft); }
+
+.promo-apply-btn {
+  padding: 11px 18px;
+  background: var(--primary);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.promo-apply-btn:hover    { background: var(--latte); }
+.promo-apply-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.promo-result {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.promo-ok  { color: #1a7a3c; }
+.promo-err { color: #c0392b; }
+
+.promo-remove-btn {
+  padding: 5px 12px;
+  background: #fde8e8;
+  color: #c0392b;
+  border: none;
+  border-radius: 20px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.promo-remove-btn:hover { background: #fbc9c9; }
+
+/* Discount row in order summary */
+.co-discount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px dashed var(--border);
+}
+
+.co-discount-amount {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a7a3c;
+}
