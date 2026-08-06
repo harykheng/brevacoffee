@@ -256,10 +256,25 @@
       <div class="co-section">
         <div class="co-section-title">Pesananmu</div>
         <div id="coItemsList"></div>
+        <div class="co-discount-row" id="coDiscountRow" style="display:none">
+          <span class="co-total-label">🎟 Diskon</span>
+          <span class="co-discount-amount" id="coDiscountAmount">−Rp 0</span>
+        </div>
         <div class="co-total-row">
           <span class="co-total-label">Total</span>
           <span class="co-total-amount" id="coTotalAmount">Rp 0</span>
         </div>
+      </div>
+
+      <!-- Section: Kode Promo -->
+      <div class="co-section">
+        <div class="co-section-title">Kode Promo</div>
+        <div class="promo-input-wrap">
+          <input type="text" id="promoCodeInput" class="promo-input" placeholder="Punya kode promo?"
+            oninput="this.value=this.value.toUpperCase().replace(/\s/g,'')">
+          <button type="button" class="promo-apply-btn" onclick="validatePromoCode()">Pakai</button>
+        </div>
+        <div class="promo-result" id="promoResult" style="display:none"></div>
       </div>
 
       <!-- Section: Catatan -->

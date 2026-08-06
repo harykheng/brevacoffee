@@ -4,7 +4,9 @@
 
 // ---- STATE ----
 let adminProducts      = [];
+let adminPromos        = [];
 let editingProductId   = null;
+let editingPromoId     = null;
 let selectedFile       = null;
 let selectedLogoFile   = null;
 let selectedBannerFile = null;
@@ -151,6 +153,9 @@ function buildAdminCard(product, index) {
        >`
     : `<div class="admin-product-img">☕</div>`;
 
+  const descHtml = product.description
+    ? `<div class="admin-product-desc">${escapeHTML(product.description)}</div>` : '';
+
   const tags = [
     product.is_new         ? '<span class="admin-tag tag-new">✨ New</span>'           : '',
     product.is_bestseller  ? '<span class="admin-tag tag-bestseller">⭐ Terlaris</span>' : '',
@@ -163,6 +168,7 @@ function buildAdminCard(product, index) {
     ${imgEl}
     <div class="admin-product-info">
       <div class="admin-product-name">${escapeHTML(product.name)}</div>
+      ${descHtml}
       <div class="admin-product-price">${formatPrice(product.price)}</div>
       <div class="admin-product-tags">${tags}</div>
       <div class="admin-product-actions">
@@ -252,10 +258,11 @@ function openProductForm(productId = null) {
 
   // Reset
   document.getElementById('productForm').reset();
-  document.getElementById('productId').value       = '';
-  document.getElementById('existingImageUrl').value = '';
-  document.getElementById('toggleVisible').checked  = true;
-  document.getElementById('variantGroups').innerHTML = '';
+  document.getElementById('productId').value          = '';
+  document.getElementById('existingImageUrl').value   = '';
+  document.getElementById('toggleVisible').checked    = true;
+  document.getElementById('variantGroups').innerHTML  = '';
+  document.getElementById('productDescription').value = '';
   resetImageUpload();
 
   if (productId) {
@@ -265,6 +272,7 @@ function openProductForm(productId = null) {
     document.getElementById('productFormTitle').textContent  = 'Edit Produk';
     document.getElementById('productId').value               = p.id;
     document.getElementById('productName').value             = p.name;
+    document.getElementById('productDescription').value     = p.description || '';
     document.getElementById('productPrice').value            = p.price;
     document.getElementById('toggleNew').checked             = p.is_new;
     document.getElementById('toggleBestseller').checked      = p.is_bestseller;
@@ -364,6 +372,7 @@ async function saveProduct(event) {
 
   try {
     const name         = document.getElementById('productName').value.trim();
+    const description  = document.getElementById('productDescription').value.trim() || null;
     const price        = parseInt(document.getElementById('productPrice').value, 10);
     const isNew        = document.getElementById('toggleNew').checked;
     const isBestseller = document.getElementById('toggleBestseller').checked;
@@ -390,7 +399,7 @@ async function saveProduct(event) {
     }
 
     const variants = getVariantsFromForm();
-    const payload  = { name, price, image_url: imageUrl, is_new: isNew, is_bestseller: isBestseller, is_visible: isVisible, variants };
+    const payload  = { name, description, price, image_url: imageUrl, is_new: isNew, is_bestseller: isBestseller, is_visible: isVisible, variants };
 
     if (productId) {
       const { error } = await supabaseClient.from('products').update(payload).eq('id', productId);
@@ -454,6 +463,188 @@ function switchTab(tab) {
   document.querySelector(`.admin-tab[data-tab="${tab}"]`).classList.add('active');
   document.getElementById(`tab-${tab}`).style.display = '';
   if (tab === 'settings') loadSettings();
+  if (tab === 'promo')    loadAdminPromos();
+}
+
+// ================================================================
+// PROMO CODES
+// ================================================================
+
+async function loadAdminPromos() {
+  const loadingEl = document.getElementById('promoLoadingState');
+  const emptyEl   = document.getElementById('emptyPromoState');
+  const list      = document.getElementById('promosList');
+
+  loadingEl.style.display = 'flex';
+  emptyEl.classList.remove('visible');
+  list.innerHTML = '';
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('promo_codes')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    adminPromos = data || [];
+    loadingEl.style.display = 'none';
+
+    document.getElementById('promoCount').textContent =
+      adminPromos.length === 0 ? '0 kode promo' : `${adminPromos.length} kode promo`;
+
+    if (adminPromos.length === 0) { emptyEl.classList.add('visible'); return; }
+    adminPromos.forEach(p => list.appendChild(buildPromoCard(p)));
+
+  } catch (err) {
+    console.error('Load promos failed:', err);
+    loadingEl.style.display = 'none';
+    showToast('Gagal memuat promo: ' + err.message, 'error');
+  }
+}
+
+function buildPromoCard(promo) {
+  const card = document.createElement('div');
+  card.className = 'promo-card';
+
+  const discLabel = promo.discount_type === 'percent'
+    ? `${promo.discount_value}% OFF`
+    : `Rp ${promo.discount_value.toLocaleString('id-ID')} OFF`;
+
+  const minLabel = promo.min_order > 0
+    ? `Min. order ${formatPrice(promo.min_order)}`
+    : 'Tidak ada min. order';
+
+  const expLabel = promo.expires_at
+    ? `Berlaku hingga ${new Date(promo.expires_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`
+    : 'Tidak ada batas waktu';
+
+  const statusTag = promo.is_active
+    ? '<span class="promo-tag promo-tag-active">✅ Aktif</span>'
+    : '<span class="promo-tag promo-tag-inactive">⭕ Nonaktif</span>';
+
+  card.innerHTML = `
+    <div class="promo-card-left">
+      <div class="promo-code-text">${escapeHTML(promo.code)}</div>
+      <div class="promo-disc-label">${discLabel}</div>
+      <div class="promo-meta">${minLabel} · ${expLabel}</div>
+      <div>${statusTag}</div>
+    </div>
+    <div class="promo-card-actions">
+      <button class="btn-sm btn-edit"   onclick="openPromoForm('${promo.id}')">✏️ Edit</button>
+      <button class="btn-sm btn-delete" onclick="confirmDeletePromo('${promo.id}', '${escapeHTML(promo.code)}')">🗑️</button>
+    </div>`;
+  return card;
+}
+
+function openPromoForm(promoId = null) {
+  editingPromoId = promoId;
+  document.getElementById('promoForm').reset();
+  document.getElementById('promoId').value = '';
+  document.getElementById('promoTypePercent').checked = true;
+  document.getElementById('promoIsActive').checked    = true;
+  document.getElementById('promoMinOrder').value      = '0';
+  updatePromoValueHint();
+
+  if (promoId) {
+    const p = adminPromos.find(x => x.id === promoId);
+    if (!p) return;
+    document.getElementById('promoFormTitle').textContent = 'Edit Kode Promo';
+    document.getElementById('promoId').value              = p.id;
+    document.getElementById('promoCode').value            = p.code;
+    document.getElementById('promoTypePercent').checked   = p.discount_type === 'percent';
+    document.getElementById('promoTypeFlat').checked      = p.discount_type === 'flat';
+    document.getElementById('promoValue').value           = p.discount_value;
+    document.getElementById('promoMinOrder').value        = p.min_order || 0;
+    document.getElementById('promoExpires').value         = p.expires_at ? p.expires_at.split('T')[0] : '';
+    document.getElementById('promoIsActive').checked      = p.is_active;
+    updatePromoValueHint();
+  } else {
+    document.getElementById('promoFormTitle').textContent = 'Tambah Kode Promo';
+  }
+
+  document.getElementById('promoFormModal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => document.getElementById('promoCode').focus(), 100);
+}
+
+function closePromoForm() {
+  document.getElementById('promoFormModal').classList.remove('active');
+  document.body.style.overflow = '';
+  editingPromoId = null;
+}
+
+function updatePromoValueHint() {
+  const isPercent = document.getElementById('promoTypePercent').checked;
+  document.getElementById('promoValueHint').textContent = isPercent
+    ? 'Masukkan angka persen (contoh: 20 = 20%)'
+    : 'Masukkan nominal Rupiah (contoh: 10000 = Rp 10.000)';
+}
+
+async function savePromo(event) {
+  event.preventDefault();
+  const btn = document.getElementById('savePromoBtn');
+  btn.textContent = 'Menyimpan...';
+  btn.disabled    = true;
+
+  try {
+    const code           = document.getElementById('promoCode').value.trim().toUpperCase();
+    const discount_type  = document.getElementById('promoTypePercent').checked ? 'percent' : 'flat';
+    const discount_value = parseInt(document.getElementById('promoValue').value, 10);
+    const min_order      = parseInt(document.getElementById('promoMinOrder').value, 10) || 0;
+    const expiresVal     = document.getElementById('promoExpires').value;
+    const expires_at     = expiresVal ? new Date(expiresVal + 'T23:59:59+07:00').toISOString() : null;
+    const is_active      = document.getElementById('promoIsActive').checked;
+    const promoId        = document.getElementById('promoId').value;
+
+    if (!code) { showToast('Kode promo wajib diisi!', 'error'); return; }
+    if (!discount_value || discount_value <= 0) { showToast('Nilai diskon wajib diisi!', 'error'); return; }
+    if (discount_type === 'percent' && discount_value > 100) { showToast('Diskon persen maksimal 100%!', 'error'); return; }
+
+    const payload = { code, discount_type, discount_value, min_order, expires_at, is_active };
+
+    if (promoId) {
+      const { error } = await supabaseClient.from('promo_codes').update(payload).eq('id', promoId);
+      if (error) throw error;
+      showToast('Kode promo berhasil diperbarui! ✅', 'success');
+    } else {
+      const { error } = await supabaseClient.from('promo_codes').insert(payload);
+      if (error) throw error;
+      showToast('Kode promo berhasil ditambahkan! ✅', 'success');
+    }
+
+    closePromoForm();
+    await loadAdminPromos();
+
+  } catch (err) {
+    console.error('Save promo error:', err);
+    showToast('Gagal menyimpan: ' + (err.message || 'Coba lagi'), 'error');
+  } finally {
+    btn.textContent = 'Simpan Promo';
+    btn.disabled    = false;
+  }
+}
+
+function confirmDeletePromo(promoId, promoCode) {
+  document.getElementById('confirmText').textContent =
+    `Yakin mau hapus kode "${promoCode}"? Tindakan ini tidak bisa dibatalkan.`;
+
+  confirmCallback = async () => {
+    try {
+      const { error } = await supabaseClient.from('promo_codes').delete().eq('id', promoId);
+      if (error) throw error;
+      showToast(`Kode "${promoCode}" berhasil dihapus`, 'success');
+      closeConfirm();
+      await loadAdminPromos();
+    } catch (err) {
+      showToast('Gagal menghapus: ' + err.message, 'error');
+      closeConfirm();
+    }
+  };
+
+  document.getElementById('confirmActionBtn').onclick = confirmCallback;
+  document.getElementById('confirmOverlay').classList.add('active');
+  document.body.style.overflow = 'hidden';
 }
 
 // ================================================================
@@ -609,6 +800,10 @@ function removeBannerImage(e) {
 // ---- MODAL OVERLAY CLICKS ----
 document.getElementById('productFormModal').addEventListener('click', function (e) {
   if (e.target === this) closeProductForm();
+});
+
+document.getElementById('promoFormModal').addEventListener('click', function (e) {
+  if (e.target === this) closePromoForm();
 });
 
 document.getElementById('confirmOverlay').addEventListener('click', function (e) {

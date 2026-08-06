@@ -505,3 +505,106 @@ img.admin-product-img { font-size: inherit; }
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* ================================================================
+   PRODUCT DESCRIPTION (admin card)
+   ================================================================ */
+.admin-product-desc {
+  font-size: 12px;
+  color: var(--text-soft);
+  font-weight: 500;
+  margin-bottom: 4px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ================================================================
+   PROMO CODES
+   ================================================================ */
+.promos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 24px 32px;
+}
+
+.promo-card {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: var(--shadow-sm);
+  animation: fadeInUp 0.3s ease both;
+}
+
+.promo-code-text {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: 0.06em;
+  font-family: monospace;
+  margin-bottom: 4px;
+}
+
+.promo-disc-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 4px;
+}
+
+.promo-meta {
+  font-size: 12px;
+  color: var(--text-soft);
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.promo-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.promo-tag-active   { background: #e7f9ef; color: #1a7a3c; }
+.promo-tag-inactive { background: #f3f4f6; color: #6b7280; }
+
+.promo-card-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+
+/* Promo form type selector */
+.promo-type-group {
+  display: flex;
+  gap: 12px;
+}
+
+.promo-type-opt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dark);
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--border);
+  transition: all 0.15s;
+  flex: 1;
+  justify-content: center;
+}
+
+.promo-type-opt:has(input:checked) {
+  border-color: var(--primary);
+  background: var(--latte-light);
+  color: var(--primary);
+}
+
+.promo-type-opt input { position: absolute; opacity: 0; pointer-events: none; }

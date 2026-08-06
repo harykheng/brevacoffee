@@ -16,6 +16,9 @@ let pendingProduct  = null;
 let pendingVariants = {};       // { groupName: { label, price } }
 let pendingQty      = 1;
 
+// promo state
+let activePromo = null;         // { code, discount_type, discount_value, min_order }
+
 // ---- HELPERS ----
 const DAYS   = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
 const MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
@@ -270,11 +273,15 @@ function buildProductCard(product, index) {
         <button class="qty-btn plus" onclick="updateQty('${product.id}',1,this)" aria-label="Tambah">+</button>
        </div>`;
 
+  const descHTML = product.description
+    ? `<div class="product-desc">${escapeHTML(product.description)}</div>` : '';
+
   card.innerHTML = `
     ${badgeHTML}
     <div class="product-image-wrap">${imgHTML}${phHTML}</div>
     <div class="product-info">
       <div class="product-name">${escapeHTML(product.name)}</div>
+      ${descHTML}
       <div class="product-price">${formatPrice(product.price)}</div>
     </div>
     ${controlsHTML}`;
@@ -322,6 +329,14 @@ function cartCount() { return Object.values(cart).reduce((s, { qty }) => s + qty
 function cartTotal() {
   return Object.values(cart).reduce((s, { product, qty, extraPrice = 0 }) => s + (product.price + extraPrice) * qty, 0);
 }
+function getDiscountAmount() {
+  if (!activePromo) return 0;
+  const raw = cartTotal();
+  if (activePromo.discount_type === 'percent')
+    return Math.round(raw * activePromo.discount_value / 100);
+  return Math.min(activePromo.discount_value, raw);
+}
+function cartFinalTotal() { return Math.max(0, cartTotal() - getDiscountAmount()); }
 
 function getProductCartQty(productId) {
   return Object.entries(cart)
@@ -363,8 +378,12 @@ function goBackFromCheckout() {
   document.getElementById('step2').classList.add('active');
   window.scrollTo(0, 0);
   // Reset location button state
-  const btn = document.getElementById('btnUseLocation');
-  if (btn) btn.querySelector('.btn-loc-text').textContent = 'Gunakan Lokasi Saya';
+  const locBtn = document.getElementById('btnUseLocation');
+  if (locBtn) locBtn.querySelector('.btn-loc-text').textContent = 'Gunakan Lokasi Saya';
+  // Reset promo
+  activePromo = null;
+  document.getElementById('promoCodeInput').value     = '';
+  document.getElementById('promoResult').style.display = 'none';
 }
 
 function renderCheckoutStep() {
@@ -412,7 +431,19 @@ function renderCheckoutStep() {
       </div>`;
   }).join('');
 
-  document.getElementById('coTotalAmount').textContent = formatPrice(cartTotal());
+  renderCheckoutTotals();
+}
+
+function renderCheckoutTotals() {
+  const discount = getDiscountAmount();
+  const discRow  = document.getElementById('coDiscountRow');
+  if (discount > 0) {
+    discRow.style.display = '';
+    document.getElementById('coDiscountAmount').textContent = `−${formatPrice(discount)}`;
+  } else {
+    discRow.style.display = 'none';
+  }
+  document.getElementById('coTotalAmount').textContent = formatPrice(cartFinalTotal());
 }
 
 // ================================================================
@@ -542,6 +573,69 @@ function removeCartItem(cartKey) {
 }
 
 // ================================================================
+// PROMO CODE
+// ================================================================
+
+async function validatePromoCode() {
+  const input = document.getElementById('promoCodeInput');
+  const code  = input.value.trim().toUpperCase();
+  if (!code) { showToast('Masukkan kode promo dulu ya!', 'error'); return; }
+
+  const btn = document.querySelector('.promo-apply-btn');
+  btn.textContent = '...';
+  btn.disabled    = true;
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('promo_codes')
+      .select('*')
+      .eq('code', code)
+      .eq('is_active', true)
+      .single();
+
+    const raw = cartTotal();
+
+    if (error || !data) {
+      showPromoResult('error', `Kode "${code}" tidak valid atau sudah tidak aktif.`);
+      activePromo = null;
+    } else if (data.min_order > 0 && raw < data.min_order) {
+      showPromoResult('error', `Min. order ${formatPrice(data.min_order)} untuk pakai kode ini.`);
+      activePromo = null;
+    } else {
+      activePromo = data;
+      const discount = getDiscountAmount();
+      const label    = data.discount_type === 'percent'
+        ? `${data.discount_value}%` : formatPrice(data.discount_value);
+      showPromoResult('success', `Yeay! Diskon ${label} berhasil diterapkan 🎉`);
+    }
+  } catch {
+    showPromoResult('error', 'Gagal cek kode. Coba lagi ya!');
+    activePromo = null;
+  } finally {
+    btn.textContent = 'Pakai';
+    btn.disabled    = false;
+    renderCheckoutTotals();
+  }
+}
+
+function showPromoResult(type, msg) {
+  const el = document.getElementById('promoResult');
+  el.style.display = 'flex';
+  if (type === 'success') {
+    el.innerHTML = `<span class="promo-ok">✅ ${escapeHTML(msg)}</span><button class="promo-remove-btn" onclick="removePromo()">Hapus</button>`;
+  } else {
+    el.innerHTML = `<span class="promo-err">❌ ${escapeHTML(msg)}</span>`;
+  }
+}
+
+function removePromo() {
+  activePromo = null;
+  document.getElementById('promoCodeInput').value    = '';
+  document.getElementById('promoResult').style.display = 'none';
+  renderCheckoutTotals();
+}
+
+// ================================================================
 // GEOLOCATION — delivery address
 // ================================================================
 
@@ -630,7 +724,9 @@ function submitOrder() {
   }
 
   const items     = Object.entries(cart);
-  const total     = cartTotal();
+  const rawTotal  = cartTotal();
+  const discount  = getDiscountAmount();
+  const finalTotal = cartFinalTotal();
   const typeLabel = orderType === 'pickup' ? 'Pickup' : 'Delivery';
 
   let msg = `Halo *${STORE_NAME}*! 😊\n\n`;
@@ -640,7 +736,13 @@ function submitOrder() {
     const variantStr  = variantLabels?.length ? ` (${variantLabels.join(', ')})` : '';
     msg += `${i + 1}. ${product.name}${variantStr} ×${qty} — ${formatPrice(unitPrice * qty)}\n`;
   });
-  msg += `\n*Total: ${formatPrice(total)}*\n\n`;
+  if (discount > 0) {
+    msg += `\nSubtotal: ${formatPrice(rawTotal)}\n`;
+    msg += `Diskon (${activePromo.code}): −${formatPrice(discount)}\n`;
+    msg += `*Total: ${formatPrice(finalTotal)}*\n\n`;
+  } else {
+    msg += `\n*Total: ${formatPrice(finalTotal)}*\n\n`;
+  }
   msg += `---\n`;
   msg += `Nama: ${name}\n`;
   msg += `WhatsApp: ${wa}\n`;
@@ -653,6 +755,7 @@ function submitOrder() {
 
   // Reset after send
   cart = {};
+  activePromo = null;
   products.forEach(p => {
     if (p.variants?.length) updateVariantBadge(p.id);
     else refreshCard(p.id);

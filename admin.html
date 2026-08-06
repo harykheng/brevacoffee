@@ -63,6 +63,7 @@
       <!-- Tab navigation -->
       <div class="admin-tabs">
         <button class="admin-tab active" data-tab="products" onclick="switchTab('products')">🛍 Produk</button>
+        <button class="admin-tab" data-tab="promo" onclick="switchTab('promo')">🎟 Promo</button>
         <button class="admin-tab" data-tab="settings" onclick="switchTab('settings')">⚙️ Pengaturan</button>
       </div>
 
@@ -90,6 +91,30 @@
         </div>
 
         <div class="products-admin-grid" id="adminProductsGrid"></div>
+      </div>
+
+      <!-- Tab: Promo -->
+      <div id="tab-promo" class="tab-panel" style="display:none">
+        <div class="admin-page-header">
+          <div>
+            <h2 class="admin-page-title">Kode Promo</h2>
+            <p class="admin-page-subtitle" id="promoCount">Memuat...</p>
+          </div>
+          <button class="btn btn-primary" onclick="openPromoForm()">+ Tambah Promo</button>
+        </div>
+
+        <div id="promoLoadingState" class="loading-state" style="display:flex">
+          <div class="spinner"></div>
+          <span>Memuat promo...</span>
+        </div>
+
+        <div class="empty-admin-state" id="emptyPromoState">
+          <span class="empty-admin-icon">🎟️</span>
+          <h3>Belum ada kode promo</h3>
+          <p>Buat kode promo pertamamu!</p>
+        </div>
+
+        <div class="promos-list" id="promosList"></div>
       </div>
 
       <!-- Tab: Pengaturan -->
@@ -241,6 +266,11 @@
         </div>
 
         <div class="form-group">
+          <label for="productDescription">Deskripsi <span style="font-weight:500;color:var(--text-soft)">(opsional)</span></label>
+          <textarea id="productDescription" rows="2" placeholder="Contoh: Espresso + susu oat, tersedia hot/iced"></textarea>
+        </div>
+
+        <div class="form-group">
           <label for="productPrice">Harga (Rp) *</label>
           <input type="number" id="productPrice" placeholder="45000" min="0" step="500" required>
         </div>
@@ -324,6 +354,78 @@
         <div class="form-actions">
           <button type="button" class="btn btn-secondary" onclick="closeProductForm()">Batal</button>
           <button type="submit" class="btn btn-primary" id="saveProductBtn">Simpan Produk</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== PROMO FORM MODAL ===== -->
+  <div class="modal-overlay" id="promoFormModal" role="dialog" aria-label="Form kode promo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="promoFormTitle">Tambah Kode Promo</h3>
+        <button class="modal-close" onclick="closePromoForm()" aria-label="Tutup">✕</button>
+      </div>
+
+      <form id="promoForm" onsubmit="savePromo(event)" novalidate>
+        <input type="hidden" id="promoId">
+
+        <div class="form-group">
+          <label for="promoCode">Kode Promo *</label>
+          <input type="text" id="promoCode" placeholder="CONTOH20" required
+            style="text-transform:uppercase;letter-spacing:0.08em"
+            oninput="this.value=this.value.toUpperCase().replace(/\s/g,'')">
+          <p class="form-hint">Huruf kapital, tanpa spasi</p>
+        </div>
+
+        <div class="form-group">
+          <label>Tipe Diskon *</label>
+          <div class="promo-type-group">
+            <label class="promo-type-opt">
+              <input type="radio" name="promoType" value="percent" id="promoTypePercent" checked
+                onchange="updatePromoValueHint()">
+              <span>% Persen</span>
+            </label>
+            <label class="promo-type-opt">
+              <input type="radio" name="promoType" value="flat" id="promoTypeFlat"
+                onchange="updatePromoValueHint()">
+              <span>Rp Nominal</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="promoValue">Nilai Diskon *</label>
+          <input type="number" id="promoValue" placeholder="20" min="1" required>
+          <p class="form-hint" id="promoValueHint">Masukkan angka persen (contoh: 20 = 20%)</p>
+        </div>
+
+        <div class="form-group">
+          <label for="promoMinOrder">Minimum Order (Rp)</label>
+          <input type="number" id="promoMinOrder" placeholder="0 = tidak ada minimum" min="0" value="0">
+        </div>
+
+        <div class="form-group">
+          <label for="promoExpires">Berlaku Hingga <span style="font-weight:500;color:var(--text-soft)">(opsional)</span></label>
+          <input type="date" id="promoExpires">
+        </div>
+
+        <div class="form-group" style="margin-bottom:0">
+          <div class="toggle-item">
+            <div class="toggle-label">
+              <span class="toggle-label-title">✅ Aktif</span>
+              <span class="toggle-label-sub">Promo bisa digunakan customer</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="promoIsActive" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="closePromoForm()">Batal</button>
+          <button type="submit" class="btn btn-primary" id="savePromoBtn">Simpan Promo</button>
         </div>
       </form>
     </div>
