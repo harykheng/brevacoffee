@@ -385,8 +385,6 @@ function goBackFromCheckout() {
   document.getElementById('step3').classList.remove('active');
   document.getElementById('step2').classList.add('active');
   window.scrollTo(0, 0);
-  const locBtn = document.getElementById('btnUseLocation');
-  if (locBtn) locBtn.querySelector('.btn-loc-text').textContent = 'Gunakan Lokasi Saya';
   // Reset promo
   activePromo = null;
   document.getElementById('promoCodeInput').value     = '';
@@ -660,74 +658,6 @@ function removePromo() {
 }
 
 // ================================================================
-// GEOLOCATION — delivery address
-// ================================================================
-
-async function useMyLocation() {
-  const btn      = document.getElementById('btnUseLocation');
-  const textarea = document.getElementById('customerAddress');
-  const verify   = document.getElementById('addressMapsVerify');
-
-  if (!navigator.geolocation) {
-    showToast('Browser kamu tidak mendukung GPS', 'error');
-    return;
-  }
-
-  btn.disabled = true;
-  btn.querySelector('.btn-loc-text').textContent = 'Mendeteksi lokasi...';
-
-  navigator.geolocation.getCurrentPosition(
-    async ({ coords }) => {
-      const { latitude: lat, longitude: lng } = coords;
-
-      // Show maps verify link immediately
-      verify.href = `https://maps.google.com/?q=${lat},${lng}`;
-      verify.style.display = 'inline-flex';
-
-      try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`,
-          { headers: { 'Accept-Language': 'id', 'User-Agent': 'BrevaCoffee/1.0' } }
-        );
-        const data = await res.json();
-
-        const addr = data.address || {};
-        const parts = [
-          addr.road && (addr.house_number ? `${addr.road} No.${addr.house_number}` : addr.road),
-          addr.suburb || addr.neighbourhood || addr.village,
-          addr.city_district || addr.county,
-          addr.city || addr.town || addr.municipality,
-        ].filter(Boolean);
-
-        textarea.value = parts.join(', ');
-        showToast('Lokasi berhasil dideteksi! Cek dan edit jika perlu.', 'success');
-      } catch {
-        textarea.value = `Koordinat: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-        showToast('Lokasi terdeteksi. Silakan edit alamat lengkapnya ya.', 'info');
-      }
-
-      // Store coords and auto-calculate shipping
-      _deliveryLat = lat;
-      _deliveryLng = lng;
-      autoCalcShipping();
-
-      btn.querySelector('.btn-loc-text').textContent = 'Perbarui Lokasi';
-      btn.disabled = false;
-    },
-    (err) => {
-      btn.querySelector('.btn-loc-text').textContent = 'Gunakan Lokasi Saya';
-      btn.disabled = false;
-
-      const msg = err.code === 1
-        ? 'Izin lokasi ditolak. Aktifkan di pengaturan browser.'
-        : 'Gagal mendapatkan lokasi. Coba lagi ya!';
-      showToast(msg, 'error');
-    },
-    { enableHighAccuracy: true, timeout: 10000 }
-  );
-}
-
-// ================================================================
 // LOCATIONIQ AUTOCOMPLETE — delivery address
 // ================================================================
 
@@ -964,9 +894,8 @@ async function submitOrder() {
       document.getElementById('customerAddress').value = '';
       const verify = document.getElementById('addressMapsVerify');
       if (verify) { verify.style.display = 'none'; verify.href = '#'; }
-      const locBtn = document.getElementById('btnUseLocation');
-      if (locBtn) locBtn.querySelector('.btn-loc-text').textContent = 'Gunakan Lokasi Saya';
     }
+    resetProfileCard();
     document.getElementById('step3').classList.remove('active');
     document.getElementById('step1').classList.add('active');
     window.scrollTo(0, 0);
@@ -1073,8 +1002,16 @@ function showQrisPayment() {
   document.body.style.overflow = 'hidden';
 }
 
+function resetProfileCard() {
+  document.getElementById('profileCardName').textContent = 'Tambahkan detail pemesan';
+  document.getElementById('profileCardSub').textContent  = 'Nama & Nomor WhatsApp';
+  document.getElementById('profileCard').classList.remove('is-filled');
+}
+
 // ── Profile modal ──────────────────────────────────────────────
 function openProfileModal() {
+  document.getElementById('profileAddressFields').style.display =
+    orderType === 'delivery' ? 'block' : 'none';
   document.getElementById('profileModal').style.display = 'flex';
   document.body.style.overflow = 'hidden';
   setTimeout(() => document.getElementById('customerName').focus(), 100);
@@ -1090,9 +1027,16 @@ function saveProfile() {
   const wa   = document.getElementById('customerWA').value.trim();
   if (!name) { showToast('Nama wajib diisi!', 'error'); document.getElementById('customerName').focus(); return; }
   if (!wa)   { showToast('Nomor WhatsApp wajib diisi!', 'error'); document.getElementById('customerWA').focus(); return; }
+  if (orderType === 'delivery') {
+    const addr = document.getElementById('customerAddress').value.trim();
+    if (!addr) { showToast('Alamat pengiriman wajib diisi!', 'error'); document.getElementById('customerAddress').focus(); return; }
+  }
   const card = document.getElementById('profileCard');
   document.getElementById('profileCardName').textContent = name;
-  document.getElementById('profileCardSub').textContent  = wa;
+  const addrSnippet = orderType === 'delivery'
+    ? ' · ' + document.getElementById('customerAddress').value.trim().split(',')[0]
+    : '';
+  document.getElementById('profileCardSub').textContent = wa + addrSnippet;
   card.classList.add('is-filled');
   closeProfileModal();
 }
@@ -1305,12 +1249,11 @@ function closeOrderSummary() {
     document.getElementById('customerAddress').value = '';
     const verify = document.getElementById('addressMapsVerify');
     if (verify) { verify.style.display = 'none'; verify.href = '#'; }
-    const locBtn = document.getElementById('btnUseLocation');
-    if (locBtn) locBtn.querySelector('.btn-loc-text').textContent = 'Gunakan Lokasi Saya';
     _deliveryLat = null; _deliveryLng = null;
     const ongkirBox = document.getElementById('ongkirOptions');
     if (ongkirBox) ongkirBox.innerHTML = '';
   }
+  resetProfileCard();
   document.getElementById('step3').classList.remove('active');
   document.getElementById('step1').classList.add('active');
   window.scrollTo(0, 0);

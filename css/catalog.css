@@ -1314,7 +1314,8 @@
   background: #fff;
   border-radius: 20px 20px 0 0;
   width: 100%;
-  padding: 0 20px 36px;
+  max-height: 90dvh;
+  overflow-y: auto;
   animation: slideUp 0.25s ease;
 }
 
@@ -1323,7 +1324,13 @@
   height: 4px;
   background: #ddd;
   border-radius: 2px;
-  margin: 12px auto 20px;
+  margin: 12px auto 8px;
+  position: sticky;
+  top: 12px;
+}
+
+.profile-sheet-inner {
+  padding: 0 20px 36px;
 }
 
 .profile-sheet-header {

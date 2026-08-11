@@ -221,10 +221,8 @@
           </div>
         </div>
 
-        <!-- Delivery: input alamat customer -->
+        <!-- Delivery: info asal + ongkir (alamat diisi di profile modal) -->
         <div id="coDeliveryInput" style="display:none">
-
-          <!-- Asal pengiriman (alamat toko) -->
           <div class="co-pickup-card" style="margin-top:12px">
             <div class="co-meta-row">
               <span class="co-meta-icon">🏪</span>
@@ -234,28 +232,6 @@
                 <div class="co-pickup-addr" id="coFromAddr"></div>
               </div>
             </div>
-          </div>
-
-          <div class="form-group" style="margin-top:14px;margin-bottom:0">
-            <label for="customerAddress">Alamat Pengiriman *</label>
-            <div class="address-input-wrap">
-              <div class="address-autocomplete-wrap">
-                <textarea id="customerAddress" placeholder="Tulis alamat lengkap + patokan..." rows="3" oninput="onAddressInput(this)" onblur="onAddressBlur(this)" autocomplete="off"></textarea>
-                <div id="addressSuggestions" class="address-suggestions" style="display:none"></div>
-              </div>
-              <button type="button" class="btn-use-location" id="btnUseLocation" onclick="useMyLocation()">
-                <span class="btn-loc-icon">📍</span>
-                <span class="btn-loc-text">Gunakan Lokasi Saya</span>
-              </button>
-              <a class="address-maps-verify" id="addressMapsVerify" href="#" target="_blank" rel="noopener" style="display:none">
-                Verifikasi di Google Maps →
-              </a>
-            </div>
-            <div id="ongkirOptions"></div>
-          </div>
-          <div class="form-group" style="margin-top:10px;margin-bottom:0">
-            <label for="customerAddressNote">Catatan Alamat <span class="label-opt">(opsional)</span></label>
-            <input type="text" id="customerAddressNote" placeholder="No. unit, lantai, patokan, kode gate...">
           </div>
         </div>
       </div>
@@ -341,23 +317,46 @@
     </div>
   </div>
 
-  <!-- PROFILE MODAL (nama & WA) -->
+  <!-- PROFILE MODAL (nama, WA, + alamat untuk delivery) -->
   <div class="profile-overlay" id="profileModal" style="display:none" onclick="closeProfileModal()">
     <div class="profile-sheet" onclick="event.stopPropagation()">
       <div class="profile-sheet-drag"></div>
-      <div class="profile-sheet-header">
-        <span class="profile-sheet-title">Detail Pemesan</span>
-        <button class="profile-sheet-close" onclick="closeProfileModal()" aria-label="Tutup">✕</button>
+      <div class="profile-sheet-inner">
+        <div class="profile-sheet-header">
+          <span class="profile-sheet-title">Detail Pemesan</span>
+          <button class="profile-sheet-close" onclick="closeProfileModal()" aria-label="Tutup">✕</button>
+        </div>
+        <div class="form-group">
+          <label for="customerName">Nama *</label>
+          <input type="text" id="customerName" placeholder="Nama kamu..." autocomplete="name">
+        </div>
+        <div class="form-group">
+          <label for="customerWA">Nomor WhatsApp *</label>
+          <input type="tel" id="customerWA" placeholder="08xxxxxxxxxx" autocomplete="tel">
+        </div>
+
+        <!-- Delivery-only fields -->
+        <div id="profileAddressFields" style="display:none">
+          <div class="form-group">
+            <label for="customerAddress">Alamat Pengiriman *</label>
+            <div class="address-autocomplete-wrap">
+              <textarea id="customerAddress" placeholder="Tulis alamat lengkap + patokan..." rows="3"
+                oninput="onAddressInput(this)" onblur="onAddressBlur(this)" autocomplete="off"></textarea>
+              <div id="addressSuggestions" class="address-suggestions" style="display:none"></div>
+            </div>
+            <a class="address-maps-verify" id="addressMapsVerify" href="#" target="_blank" rel="noopener" style="display:none">
+              Verifikasi di Google Maps →
+            </a>
+            <div id="ongkirOptions"></div>
+          </div>
+          <div class="form-group">
+            <label for="customerAddressNote">Catatan Alamat <span class="label-opt">(opsional)</span></label>
+            <input type="text" id="customerAddressNote" placeholder="No. unit, lantai, patokan, kode gate...">
+          </div>
+        </div>
+
+        <button class="btn-profile-save" onclick="saveProfile()" style="margin-bottom:8px">Simpan</button>
       </div>
-      <div class="form-group">
-        <label for="customerName">Nama *</label>
-        <input type="text" id="customerName" placeholder="Nama kamu..." autocomplete="name">
-      </div>
-      <div class="form-group" style="margin-bottom:24px">
-        <label for="customerWA">Nomor WhatsApp *</label>
-        <input type="tel" id="customerWA" placeholder="08xxxxxxxxxx" autocomplete="tel">
-      </div>
-      <button class="btn-profile-save" onclick="saveProfile()">Simpan</button>
     </div>
   </div>
 
