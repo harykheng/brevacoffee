@@ -684,65 +684,38 @@
 }
 .address-maps-verify:hover { text-decoration: underline; }
 
-/* ---- CEK ONGKIR BUTTON ---- */
-.btn-check-ongkir {
-  width: 100%;
-  margin-top: 10px;
-  padding: 12px 16px;
-  background: var(--primary);
-  color: var(--white);
-  border: none;
-  border-radius: var(--radius-md);
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-.btn-check-ongkir:hover  { background: var(--primary-dark); transform: translateY(-1px); }
-.btn-check-ongkir:active { transform: translateY(0); }
-.btn-check-ongkir:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-
-/* ---- ONGKIR OPTIONS ---- */
+/* ---- ONGKIR AUTO RESULT ---- */
 #ongkirOptions { margin-top: 10px; }
 
-.ongkir-label {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-soft);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 8px;
-}
-
-.ongkir-list { display: flex; flex-direction: column; gap: 8px; }
-
-.ongkir-option {
+.ongkir-static-result {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px;
-  border: 2px solid var(--border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  background: var(--white);
-  gap: 10px;
-}
-.ongkir-option:hover  { border-color: var(--primary); background: var(--latte-xlight); }
-.ongkir-option.selected {
-  border-color: var(--primary);
+  padding: 11px 14px;
   background: var(--latte-xlight);
-  box-shadow: 0 0 0 1px var(--primary);
+  border: 1.5px solid var(--primary);
+  border-radius: var(--radius-md);
+  gap: 10px;
+  animation: fadeIn 0.25s ease;
 }
+
+.ongkir-unavailable {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 14px;
+  background: #fff0f0;
+  border: 1.5px solid #f5c6cb;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: #c0392b;
+  animation: fadeIn 0.25s ease;
+}
+.ongkir-unavailable strong { display: block; font-weight: 700; margin-bottom: 2px; }
+.ongkir-unavailable div    { font-size: 12px; margin-top: 2px; }
 
 .ongkir-left     { flex: 1; min-width: 0; }
 .ongkir-courier  { font-size: 14px; font-weight: 700; color: var(--text-dark); }
-.ongkir-service  { font-size: 12px; font-weight: 600; color: var(--primary); margin-top: 1px; }
 .ongkir-eta      { font-size: 11px; font-weight: 500; color: var(--text-soft); margin-top: 2px; }
 .ongkir-price    { font-size: 15px; font-weight: 800; color: var(--primary); flex-shrink: 0; }
 

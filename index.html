@@ -227,7 +227,7 @@
             <label for="customerAddress">Alamat Pengiriman *</label>
             <div class="address-input-wrap">
               <div class="address-autocomplete-wrap">
-                <textarea id="customerAddress" placeholder="Tulis alamat lengkap + patokan..." rows="3" oninput="onAddressInput(this)" autocomplete="off"></textarea>
+                <textarea id="customerAddress" placeholder="Tulis alamat lengkap + patokan..." rows="3" oninput="onAddressInput(this)" onblur="onAddressBlur(this)" autocomplete="off"></textarea>
                 <div id="addressSuggestions" class="address-suggestions" style="display:none"></div>
               </div>
               <button type="button" class="btn-use-location" id="btnUseLocation" onclick="useMyLocation()">
@@ -238,9 +238,6 @@
                 Verifikasi di Google Maps →
               </a>
             </div>
-            <button type="button" class="btn-check-ongkir" id="btnCheckOngkir" onclick="checkOngkir()">
-              🛵 Cek Ongkir
-            </button>
             <div id="ongkirOptions"></div>
           </div>
         </div>

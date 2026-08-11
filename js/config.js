@@ -8,7 +8,7 @@ const SUPABASE_URL = 'https://ftuxnxrbydnfrpdyisht.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0dXhueHJieWRuZnJwZHlpc2h0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0NjkzNTIsImV4cCI6MjA5ODA0NTM1Mn0.qK-9J90EoHO_c1VsU5BZ_KV4QbeoFP_1qRK-QMfCGnE';
 
 // Nomor WhatsApp admin (format: 62xxxxxxxxx, tanpa + atau spasi)
-const ADMIN_WHATSAPP = '1231231321321321321';
+const ADMIN_WHATSAPP = '6281292567788';
 
 // Nama toko (tampil di pesan WhatsApp)
 const STORE_NAME = 'Breva Coffee';
@@ -29,24 +29,13 @@ const TIKTOK_URL    = 'https://tiktok.com/@brevacoffee';
 // LocationIQ API key (autocomplete alamat pengiriman)
 const LOCATIONIQ_KEY = 'pk.ef1ed798f746b8028e0dba1998dab9f2';
 
-// Biteship API key (cek ongkir GoSend/GrabExpress)
-// Daftar di app.biteship.com → Settings → API Keys
-const BITESHIP_API_KEY = 'biteship_test.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiQnJldmEgQ2FmZSIsInVzZXJJZCI6IjY4NjdhMzlhYTA0M2FlMDAxMzc4NThjYyIsImlhdCI6MTc4NjQzNTEzMH0.o0bEKThc0ZEx0PGOdf4ZJKDll0uZBBLQY4H8dymevLo';
-
-// Koordinat toko (origin untuk kalkulasi ongkir)
+// Koordinat toko (untuk kalkulasi ongkir berdasarkan jarak)
 // Verifikasi di: https://maps.google.com/?q=-6.2308,106.6480
 const STORE_LAT = -6.2308;
 const STORE_LNG = 106.6480;
 
 // QRIS statis merchant (dari bank/GoPay/OVO — ganti dengan QRIS Breva Coffee asli)
 const QRIS_STATIC = '00020101021126610014COM.GO-JEK.WWW01189360091432449962000210G2449962000303UMI51440014ID.CO.QRIS.WWW0215ID10243329840860303UMI5204597753033605802ID5925Oraiste Beauty House, BTC6014KOTA TANGERANG61051512262070703A0163049B66';
-
-// Biteship API key (cek ongkir GoSend/GrabExpress)
-const BITESHIP_API_KEY = 'biteship_test.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiQnJldmEgQ2FmZSIsInVzZXJJZCI6IjY4NjdhMzlhYTA0M2FlMDAxMzc4NThjYyIsImlhdCI6MTc4NjQzNTEzMH0.o0bEKThc0ZEx0PGOdf4ZJKDll0uZBBLQY4H8dymevLo';
-
-// Koordinat toko (untuk kalkulasi ongkir)
-const STORE_LAT = -6.2308;
-const STORE_LNG = 106.6480;
 
 // ================================================
 // INIT SUPABASE CLIENT
