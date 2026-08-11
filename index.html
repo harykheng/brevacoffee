@@ -226,7 +226,10 @@
           <div class="form-group" style="margin-top:14px;margin-bottom:0">
             <label for="customerAddress">Alamat Pengiriman *</label>
             <div class="address-input-wrap">
-              <textarea id="customerAddress" placeholder="Tulis alamat lengkap + patokan..." rows="3"></textarea>
+              <div class="address-autocomplete-wrap">
+                <textarea id="customerAddress" placeholder="Tulis alamat lengkap + patokan..." rows="3" oninput="onAddressInput(this)" autocomplete="off"></textarea>
+                <div id="addressSuggestions" class="address-suggestions" style="display:none"></div>
+              </div>
               <button type="button" class="btn-use-location" id="btnUseLocation" onclick="useMyLocation()">
                 <span class="btn-loc-icon">📍</span>
                 <span class="btn-loc-text">Gunakan Lokasi Saya</span>
@@ -235,6 +238,10 @@
                 Verifikasi di Google Maps →
               </a>
             </div>
+            <button type="button" class="btn-check-ongkir" id="btnCheckOngkir" onclick="checkOngkir()">
+              🛵 Cek Ongkir
+            </button>
+            <div id="ongkirOptions" style="display:none"></div>
           </div>
         </div>
       </div>
@@ -259,6 +266,10 @@
         <div class="co-discount-row" id="coDiscountRow" style="display:none">
           <span class="co-total-label">🎟 Diskon</span>
           <span class="co-discount-amount" id="coDiscountAmount">−Rp 0</span>
+        </div>
+        <div class="co-shipping-row" id="coShippingRow" style="display:none">
+          <span class="co-total-label" id="coShippingLabel">🛵 Ongkos Kirim</span>
+          <span class="co-shipping-amount" id="coShippingAmount">Rp 0</span>
         </div>
         <div class="co-total-row">
           <span class="co-total-label">Total</span>
@@ -287,8 +298,8 @@
 
       <!-- Submit -->
       <div class="co-submit">
-        <button class="btn-wa-send" onclick="submitOrder()">
-          Kirim via WhatsApp 📱
+        <button class="btn-wa-send" onclick="showQrisPayment()">
+          Bayar via QRIS 💳
         </button>
       </div>
 
@@ -357,7 +368,29 @@
   <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
   <!-- SCRIPTS -->
+  <!-- QRIS Payment Modal -->
+  <div class="qris-overlay" id="qrisModal" style="display:none" role="dialog" aria-label="Pembayaran QRIS">
+    <div class="qris-box">
+      <button class="qris-close" onclick="closeQrisModal()" aria-label="Tutup">✕</button>
+      <div class="qris-header">
+        <span class="qris-logo">⬛ QRIS</span>
+        <span class="qris-title">Scan &amp; Bayar</span>
+      </div>
+      <div class="qris-total-row">
+        Total: <strong id="qrisAmountText">Rp 0</strong>
+      </div>
+      <div class="qris-canvas-wrap">
+        <canvas id="qrisCanvas"></canvas>
+      </div>
+      <p class="qris-hint">Scan dengan aplikasi bank atau e-wallet kamu</p>
+      <button class="btn-qris-confirm" id="btnQrisConfirm" onclick="confirmQrisPayment()">
+        ✅ Sudah Bayar — Konfirmasi via WhatsApp
+      </button>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
   <script src="js/config.js"></script>
   <script src="js/catalog.js"></script>
 
