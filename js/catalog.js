@@ -699,6 +699,56 @@ async function useMyLocation() {
   );
 }
 
+// ================================================================
+// LOCATIONIQ AUTOCOMPLETE — delivery address
+// ================================================================
+
+let _acTimer = null;
+
+function onAddressInput(textarea) {
+  const q = textarea.value;
+  clearTimeout(_acTimer);
+  if (q.length < 3) { hideAddressSuggestions(); return; }
+  _acTimer = setTimeout(() => fetchAddressSuggestions(q), 350);
+}
+
+async function fetchAddressSuggestions(q) {
+  try {
+    const url = `https://api.locationiq.com/v1/autocomplete?key=${LOCATIONIQ_KEY}&q=${encodeURIComponent(q)}&limit=5&dedupe=1&accept-language=id&countrycodes=id`;
+    const res  = await fetch(url);
+    if (!res.ok) return;
+    const data = await res.json();
+    renderAddressSuggestions(data);
+  } catch { /* silent — user can still type manually */ }
+}
+
+function renderAddressSuggestions(results) {
+  const box = document.getElementById('addressSuggestions');
+  if (!results || results.length === 0) { hideAddressSuggestions(); return; }
+
+  box.innerHTML = results.map(r => {
+    const label = escapeHTML(r.display_name || r.display_place || '');
+    return `<div class="address-suggestion-item" onmousedown="selectAddressSuggestion(${JSON.stringify(r.display_name || '')})">${label}</div>`;
+  }).join('');
+  box.style.display = 'block';
+}
+
+function selectAddressSuggestion(displayName) {
+  const textarea = document.getElementById('customerAddress');
+  textarea.value = displayName;
+  hideAddressSuggestions();
+  textarea.focus();
+}
+
+function hideAddressSuggestions() {
+  const box = document.getElementById('addressSuggestions');
+  if (box) box.style.display = 'none';
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.address-autocomplete-wrap')) hideAddressSuggestions();
+});
+
 async function submitOrder() {
   const name    = document.getElementById('customerName').value.trim();
   const wa      = document.getElementById('customerWA').value.trim();
