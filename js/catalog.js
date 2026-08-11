@@ -1071,6 +1071,15 @@ function showQrisPayment() {
   document.body.style.overflow = 'hidden';
 }
 
+function saveQrisImage() {
+  const canvas = document.querySelector('#qrisQR canvas');
+  if (!canvas) { showToast('QR belum siap', 'error'); return; }
+  const link = document.createElement('a');
+  link.download = `QRIS-BrevaCoffee-${_qrisPendingOrder?.orderNum || 'payment'}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
 function goBackFromQris() {
   document.getElementById('qrisModal').style.display = 'none';
   document.body.style.overflow = '';
