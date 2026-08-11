@@ -324,6 +324,70 @@
     </div>
   </div>
 
+  <!-- ==============================================
+       STEP 4 — QRIS PAYMENT PAGE
+       ============================================== -->
+  <div id="step4" class="step">
+    <div class="qp-page">
+
+      <!-- Back button -->
+      <button class="qp-back" onclick="goBackFromQris()" aria-label="Kembali">←</button>
+
+      <!-- Sparkle stars in the cream area -->
+      <span class="qp-star qp-star-tl">✦</span>
+      <span class="qp-star qp-star-tr">✦</span>
+      <span class="qp-star qp-star-bl">✦</span>
+      <span class="qp-star qp-star-br">✦</span>
+
+      <!-- Total amount display -->
+      <div class="qp-total-area">
+        <div class="qp-total-label">Total Pembayaran</div>
+        <div class="qp-total-amount" id="qrisAmountText">Rp 0</div>
+      </div>
+
+      <!-- Arch section: SVG curved text + brown dome -->
+      <div class="qp-arch-section">
+
+        <!-- Curved "SCAN HERE" SVG text over the dome -->
+        <svg class="qp-scan-svg" viewBox="0 0 360 160" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <path id="scanArcPath" d="M 0,120 A 180,90 0 0,1 360,120"/>
+          </defs>
+          <text class="qp-scan-text">
+            <textPath href="#scanArcPath" startOffset="50%" text-anchor="middle">SCAN HERE</textPath>
+          </text>
+        </svg>
+
+        <!-- Decorative chevron shapes on arch sides -->
+        <div class="qp-deco-left" aria-hidden="true"></div>
+        <div class="qp-deco-right" aria-hidden="true"></div>
+
+        <!-- Brown arch dome -->
+        <div class="qp-arch">
+          <p class="qp-arch-subtitle">For Payment</p>
+
+          <!-- QR code frame with corner-bracket viewfinder -->
+          <div class="qp-qr-frame">
+            <div class="qp-corner qp-corner-tl"></div>
+            <div class="qp-corner qp-corner-tr"></div>
+            <div class="qp-corner qp-corner-bl"></div>
+            <div class="qp-corner qp-corner-br"></div>
+            <div id="qrisQR"></div>
+          </div>
+
+          <p class="qp-hint">Scan dengan aplikasi bank atau e-wallet kamu</p>
+
+          <div class="qp-cafe-name">Breva Cafe</div>
+
+          <button class="btn-qp-confirm" id="btnQrisConfirm" onclick="confirmQrisPayment()">
+            Konfirmasi Pesanan
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
   <!-- VARIANT SELECTION SHEET -->
   <div class="variant-overlay" id="variantOverlay" onclick="closeVariantSheet()">
     <div class="variant-sheet" id="variantSheet" onclick="event.stopPropagation()">
@@ -365,26 +429,6 @@
   <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
   <!-- SCRIPTS -->
-  <!-- QRIS Payment Modal -->
-  <div class="qris-overlay" id="qrisModal" style="display:none" role="dialog" aria-label="Pembayaran QRIS">
-    <div class="qris-box">
-      <button class="qris-close" onclick="closeQrisModal()" aria-label="Tutup">✕</button>
-      <div class="qris-header">
-        <span class="qris-logo">⬛ QRIS</span>
-        <span class="qris-title">Scan &amp; Bayar</span>
-      </div>
-      <div class="qris-total-row">
-        Total: <strong id="qrisAmountText">Rp 0</strong>
-      </div>
-      <div class="qris-canvas-wrap">
-        <div id="qrisQR"></div>
-      </div>
-      <p class="qris-hint">Scan dengan aplikasi bank atau e-wallet kamu</p>
-      <button class="btn-qris-confirm" id="btnQrisConfirm" onclick="confirmQrisPayment()">
-        Konfirmasi Pesanan
-      </button>
-    </div>
-  </div>
 
   <!-- ORDER SUMMARY MODAL (shown after QRIS confirm) -->
   <div class="oss-overlay" id="orderSummaryModal" style="display:none" role="dialog" aria-label="Ringkasan Pesanan">

@@ -1063,13 +1063,15 @@ function showQrisPayment() {
     return;
   }
 
-  document.getElementById('qrisModal').style.display = 'flex';
-  document.body.style.overflow = 'hidden';
+  document.getElementById('step3').classList.remove('active');
+  document.getElementById('step4').classList.add('active');
+  window.scrollTo(0, 0);
 }
 
-function closeQrisModal() {
-  document.getElementById('qrisModal').style.display = 'none';
-  document.body.style.overflow = '';
+function goBackFromQris() {
+  document.getElementById('step4').classList.remove('active');
+  document.getElementById('step3').classList.add('active');
+  window.scrollTo(0, 0);
   _qrisPendingOrder = null;
 }
 
@@ -1133,7 +1135,7 @@ async function confirmQrisPayment() {
     if (error) throw error;
 
     _ossWaUrl = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(msg)}`;
-    closeQrisModal();
+    document.getElementById('step4').classList.remove('active');
     showOrderSummary(o);
 
   } catch (err) {

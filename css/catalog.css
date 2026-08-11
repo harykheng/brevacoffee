@@ -1161,123 +1161,254 @@
 }
 
 /* ================================================================
-   QRIS PAYMENT MODAL
+   STEP 4 — QRIS PAYMENT PAGE
    ================================================================ */
-
-.qris-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.6);
+#step4.active {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-  backdrop-filter: blur(4px);
+  animation: none;
 }
 
-.qris-box {
-  background: #fff;
-  border-radius: 20px;
-  padding: 28px 24px 24px;
-  width: 100%;
-  max-width: 340px;
-  text-align: center;
+.qp-page {
   position: relative;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
-  animation: fadeInUp 0.25s ease;
+  min-height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  background: #f7e4c0;
+  background-image: repeating-conic-gradient(
+    from 0deg at 50% -15%,
+    #f7e4c0 0deg 9deg,
+    #e8cfa0 9deg 18deg
+  );
 }
 
-.qris-close {
+/* Back button */
+.qp-back {
   position: absolute;
-  top: 14px;
-  right: 14px;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
+  top: 16px;
+  left: 16px;
+  z-index: 20;
+  width: 40px;
+  height: 40px;
   border: none;
-  background: #f1f1f1;
-  font-size: 14px;
+  background: rgba(255,255,255,0.55);
+  border-radius: 50%;
+  font-size: 20px;
+  font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #666;
+  color: #553125;
+  line-height: 1;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
-.qris-close:hover { background: #e0e0e0; }
+.qp-back:hover { background: rgba(255,255,255,0.78); }
 
-.qris-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-bottom: 12px;
+/* Sparkle stars */
+.qp-star {
+  position: absolute;
+  z-index: 5;
+  color: #c47a50;
+  pointer-events: none;
+  line-height: 1;
+}
+.qp-star-tl { top: 70px;  left: 24px;  font-size: 20px; }
+.qp-star-tr { top: 55px;  right: 20px; font-size: 30px; }
+.qp-star-bl { top: 200px; left: 16px;  font-size: 14px; }
+.qp-star-br { top: 186px; right: 14px; font-size: 22px; }
+
+/* Total amount area */
+.qp-total-area {
+  position: relative;
+  z-index: 10;
+  text-align: center;
+  padding: 24px 16px 0;
 }
 
-.qris-logo {
-  font-size: 13px;
+.qp-total-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #7a5538;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+
+.qp-total-amount {
+  font-size: 30px;
   font-weight: 800;
-  background: #e30613;
-  color: #fff;
-  padding: 3px 8px;
-  border-radius: 4px;
-  letter-spacing: 0.05em;
+  color: #553125;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
 }
 
-.qris-title {
+/* Arch section — fills remaining height */
+.qp-arch-section {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-top: 20px;
+  overflow: visible;
+}
+
+/* SVG with curved SCAN HERE text
+   Positioned 30px above arch-section so text sits on the dome's outside edge:
+   — SVG y=30 aligns with dome apex (arch-section y=0)
+   — SVG y=120 aligns with dome sides (arch-section y=90, = ry of border-radius)
+   Arc path M 0,120 A 180,90 0 0,1 360,120 traces the arch dome exactly */
+.qp-scan-svg {
+  position: absolute;
+  top: -30px;
+  left: 0;
+  width: 100%;
+  height: 160px;
+  z-index: 15;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.qp-scan-text {
+  font-size: 34px;
+  font-weight: 900;
+  fill: #c05530;
+  stroke: #ffffff;
+  stroke-width: 7px;
+  paint-order: stroke fill;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: 0.12em;
+}
+
+/* Decorative chevron shapes flanking the dome */
+.qp-deco-left,
+.qp-deco-right {
+  position: absolute;
+  top: 72px;
+  z-index: 14;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.qp-deco-left  { left: 0; align-items: flex-start; }
+.qp-deco-right { right: 0; align-items: flex-end; }
+
+.qp-deco-left::before,
+.qp-deco-left::after {
+  content: '';
+  display: block;
+  background: #c47a50;
+}
+.qp-deco-left::before {
+  width: 30px; height: 24px;
+  clip-path: polygon(0 50%, 100% 0, 100% 100%);
+}
+.qp-deco-left::after {
+  width: 20px; height: 16px;
+  clip-path: polygon(0 50%, 100% 0, 100% 100%);
+  opacity: 0.6;
+  margin-left: 5px;
+}
+
+.qp-deco-right::before,
+.qp-deco-right::after {
+  content: '';
+  display: block;
+  background: #c47a50;
+}
+.qp-deco-right::before {
+  width: 30px; height: 24px;
+  clip-path: polygon(100% 50%, 0 0, 0 100%);
+}
+.qp-deco-right::after {
+  width: 20px; height: 16px;
+  clip-path: polygon(100% 50%, 0 0, 0 100%);
+  opacity: 0.6;
+  margin-right: 5px;
+}
+
+/* Brown arch dome — border-radius ry=90px matches SVG arc geometry */
+.qp-arch {
+  width: 100%;
+  background: #553125;
+  border-top-left-radius: 50% 90px;
+  border-top-right-radius: 50% 90px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 100px 28px 44px;
+  position: relative;
+  z-index: 10;
+}
+
+.qp-arch-subtitle {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  margin: 0 0 20px;
+}
+
+/* QR code frame with corner-bracket viewfinder lines */
+.qp-qr-frame {
+  position: relative;
+  background: #fff;
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 14px;
+  line-height: 0;
+}
+
+.qp-corner {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+}
+.qp-corner-tl { top: -5px; left: -5px; border-top: 4px solid #e8a56a; border-left: 4px solid #e8a56a; border-radius: 4px 0 0 0; }
+.qp-corner-tr { top: -5px; right: -5px; border-top: 4px solid #e8a56a; border-right: 4px solid #e8a56a; border-radius: 0 4px 0 0; }
+.qp-corner-bl { bottom: -5px; left: -5px; border-bottom: 4px solid #e8a56a; border-left: 4px solid #e8a56a; border-radius: 0 0 0 4px; }
+.qp-corner-br { bottom: -5px; right: -5px; border-bottom: 4px solid #e8a56a; border-right: 4px solid #e8a56a; border-radius: 0 0 4px 0; }
+
+.qp-hint {
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+  text-align: center;
+  line-height: 1.55;
+  margin: 0 0 16px;
+}
+
+.qp-cafe-name {
+  font-size: 24px;
+  font-style: italic;
+  font-weight: 700;
+  color: rgba(255,255,255,0.88);
+  letter-spacing: 0.02em;
+  margin-bottom: 26px;
+}
+
+.btn-qp-confirm {
+  width: 100%;
+  max-width: 280px;
+  padding: 16px 28px;
+  background: linear-gradient(135deg, #c47a50, #a05230);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
   font-size: 15px;
   font-weight: 700;
-  color: var(--text-dark);
-}
-
-.qris-total-row {
-  font-size: 14px;
-  color: var(--text-soft);
-  margin-bottom: 16px;
-}
-
-.qris-total-row strong {
-  font-size: 22px;
-  font-weight: 800;
-  color: var(--primary);
-  display: block;
-  margin-top: 2px;
-}
-
-.qris-canvas-wrap {
-  display: inline-block;
-  padding: 12px;
-  background: #fff;
-  border-radius: 12px;
-  border: 2px solid #f0f0f0;
-  margin-bottom: 12px;
-}
-
-.qris-canvas-wrap canvas {
-  display: block;
-}
-
-.qris-hint {
-  font-size: 12px;
-  color: var(--text-soft);
-  margin-bottom: 16px;
-  line-height: 1.5;
-}
-
-.btn-qris-confirm {
-  width: 100%;
-  padding: 14px;
-  background: #22c55e;
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 700;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: opacity 0.15s, transform 0.1s;
+  font-family: inherit;
+  letter-spacing: 0.02em;
 }
-.btn-qris-confirm:hover   { background: #16a34a; }
-.btn-qris-confirm:disabled { background: #86efac; cursor: not-allowed; }
+.btn-qp-confirm:hover   { opacity: 0.9; }
+.btn-qp-confirm:active  { transform: scale(0.97); }
+.btn-qp-confirm:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
 /* ================================================================
    ORDER SUMMARY MODAL (after QRIS confirm)
