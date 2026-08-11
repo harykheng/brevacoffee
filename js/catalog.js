@@ -1161,17 +1161,21 @@ function showOrderSummary(o) {
   if (orderType === 'delivery' && o.address) {
     deliverySection.style.display = '';
     deliveryHeader.innerHTML = '<span>🛵</span> PENGIRIMAN';
+    const storeMapsLink = STORE_MAPS_URL
+      ? `<a href="${escapeHTML(STORE_MAPS_URL)}" target="_blank" rel="noopener" style="color:#a05230;word-break:break-all">${escapeHTML(STORE_ADDRESS)}</a>`
+      : escapeHTML(STORE_ADDRESS);
     const rows = [
+      ['Dari',     null, storeMapsLink],
       ['Penerima', o.name],
       ['Telepon',  o.wa],
       ['Alamat',   o.address],
       ...(o.shippingLabel ? [['Kurir', o.shippingLabel]] : []),
       ['Tanggal',  selectedDateLabel],
     ];
-    document.getElementById('ossDeliveryRows').innerHTML = rows.map(([label, val]) =>
+    document.getElementById('ossDeliveryRows').innerHTML = rows.map(([label, val, rawHtml]) =>
       `<div class="oss-row">
         <span class="oss-row-label">${escapeHTML(label)}</span>
-        <span class="oss-row-value">${escapeHTML(val || '')}</span>
+        <span class="oss-row-value">${rawHtml ?? escapeHTML(val || '')}</span>
       </div>`
     ).join('');
   } else if (orderType === 'pickup') {
