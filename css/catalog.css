@@ -684,84 +684,76 @@
 }
 .address-maps-verify:hover { text-decoration: underline; }
 
-/* ---- ONGKIR CHECK ---- */
+/* ---- CEK ONGKIR BUTTON ---- */
 .btn-check-ongkir {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 4px;
-  padding: 10px 18px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px 16px;
   background: var(--primary);
-  color: #fff;
+  color: var(--white);
   border: none;
   border-radius: var(--radius-md);
-  font-family: 'Nunito', sans-serif;
-  font-size: 13px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s;
-  align-self: flex-start;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
-.btn-check-ongkir:hover  { background: var(--primary-dark, #4a2c1a); }
-.btn-check-ongkir:active { transform: scale(0.97); }
+.btn-check-ongkir:hover  { background: var(--primary-dark); transform: translateY(-1px); }
+.btn-check-ongkir:active { transform: translateY(0); }
 .btn-check-ongkir:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
-#ongkirOptions {
-  margin-top: 10px;
-  border: 1.5px solid var(--latte-light);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
+/* ---- ONGKIR OPTIONS ---- */
+#ongkirOptions { margin-top: 10px; }
 
-.ongkir-pick-label {
-  margin: 0;
-  padding: 10px 14px 6px;
+.ongkir-label {
   font-size: 12px;
   font-weight: 700;
-  color: var(--text-muted);
+  color: var(--text-soft);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  margin-bottom: 8px;
 }
+
+.ongkir-list { display: flex; flex-direction: column; gap: 8px; }
 
 .ongkir-option {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 11px 14px;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  border-top: 1px solid var(--latte-xlight);
-  transition: background 0.15s;
+  transition: all 0.2s ease;
+  background: var(--white);
+  gap: 10px;
 }
-.ongkir-option:first-of-type { border-top: none; }
-.ongkir-option:hover { background: var(--latte-xlight); }
-.ongkir-option input[type="radio"] { accent-color: var(--primary); flex-shrink: 0; }
-
-.ongkir-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
-.ongkir-name { font-size: 13px; font-weight: 700; color: var(--text-dark); }
-.ongkir-duration { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
-.ongkir-price { font-size: 13px; font-weight: 800; color: var(--primary); white-space: nowrap; }
-
-.ongkir-empty {
-  margin: 0;
-  padding: 14px;
-  font-size: 13px;
-  color: var(--text-muted);
-  text-align: center;
+.ongkir-option:hover  { border-color: var(--primary); background: var(--latte-xlight); }
+.ongkir-option.selected {
+  border-color: var(--primary);
+  background: var(--latte-xlight);
+  box-shadow: 0 0 0 1px var(--primary);
 }
 
-/* ---- SHIPPING ROW IN TOTALS ---- */
+.ongkir-left     { flex: 1; min-width: 0; }
+.ongkir-courier  { font-size: 14px; font-weight: 700; color: var(--text-dark); }
+.ongkir-service  { font-size: 12px; font-weight: 600; color: var(--primary); margin-top: 1px; }
+.ongkir-eta      { font-size: 11px; font-weight: 500; color: var(--text-soft); margin-top: 2px; }
+.ongkir-price    { font-size: 15px; font-weight: 800; color: var(--primary); flex-shrink: 0; }
+
+/* ---- CO SHIPPING ROW ---- */
 .co-shipping-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 0;
-  border-bottom: 1px dashed var(--cream);
+  padding: 6px 0 0;
 }
-.co-shipping-amount {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-dark);
-}
+.co-shipping-amount { font-size: 15px; font-weight: 700; color: var(--text-dark); }
 
 /* ---- CO ITEMS LIST ---- */
 .co-item {

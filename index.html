@@ -241,7 +241,7 @@
             <button type="button" class="btn-check-ongkir" id="btnCheckOngkir" onclick="checkOngkir()">
               🛵 Cek Ongkir
             </button>
-            <div id="ongkirOptions" style="display:none"></div>
+            <div id="ongkirOptions"></div>
           </div>
         </div>
       </div>
@@ -268,7 +268,7 @@
           <span class="co-discount-amount" id="coDiscountAmount">−Rp 0</span>
         </div>
         <div class="co-shipping-row" id="coShippingRow" style="display:none">
-          <span class="co-total-label" id="coShippingLabel">🛵 Ongkos Kirim</span>
+          <span class="co-total-label">🛵 Ongkir</span>
           <span class="co-shipping-amount" id="coShippingAmount">Rp 0</span>
         </div>
         <div class="co-total-row">
@@ -380,7 +380,7 @@
         Total: <strong id="qrisAmountText">Rp 0</strong>
       </div>
       <div class="qris-canvas-wrap">
-        <canvas id="qrisCanvas"></canvas>
+        <div id="qrisQR"></div>
       </div>
       <p class="qris-hint">Scan dengan aplikasi bank atau e-wallet kamu</p>
       <button class="btn-qris-confirm" id="btnQrisConfirm" onclick="confirmQrisPayment()">
@@ -390,7 +390,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="js/config.js"></script>
   <script src="js/catalog.js"></script>
 
