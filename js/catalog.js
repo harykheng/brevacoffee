@@ -899,8 +899,8 @@ function qrisToDynamic(staticQris, amount) {
   // Insert Transaction Amount field (tag 54) before Country Code (tag 5802)
   const amountStr = String(amount);
   data = data.replace('5802ID', `54${String(amountStr.length).padStart(2, '0')}${amountStr}5802ID`);
-  // Recalculate CRC
-  return data + crc16(data + '6304');
+  // Recalculate CRC — data already ends with '6304' tag+length
+  return data + crc16(data);
 }
 
 // Shared state for QRIS flow
