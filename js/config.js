@@ -29,15 +29,6 @@ const TIKTOK_URL    = 'https://tiktok.com/@brevacoffee';
 // LocationIQ API key (autocomplete alamat pengiriman)
 const LOCATIONIQ_KEY = 'pk.ef1ed798f746b8028e0dba1998dab9f2';
 
-// Biteship API key (cek ongkir GoSend/GrabExpress)
-// Daftar di app.biteship.com → Settings → API Keys
-const BITESHIP_API_KEY = 'biteship_test.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiQnJldmEgQ2FmZSIsInVzZXJJZCI6IjY4NjdhMzlhYTA0M2FlMDAxMzc4NThjYyIsImlhdCI6MTc4NjQzNTEzMH0.o0bEKThc0ZEx0PGOdf4ZJKDll0uZBBLQY4H8dymevLo';
-
-// Koordinat toko (origin untuk kalkulasi ongkir)
-// Verifikasi di: https://maps.google.com/?q=-6.2308,106.6480
-const STORE_LAT = -6.2308;
-const STORE_LNG = 106.6480;
-
 // QRIS statis merchant (dari bank/GoPay/OVO — ganti dengan QRIS Breva Coffee asli)
 const QRIS_STATIC = '00020101021126610014COM.GO-JEK.WWW01189360091432449962000210G2449962000303UMI51440014ID.CO.QRIS.WWW0215ID10243329840860303UMI5204597753033605802ID5925Oraiste Beauty House, BTC6014KOTA TANGERANG61051512262070703A0163049B66';
 
