@@ -943,8 +943,13 @@ function showQrisPayment() {
   // Generate dynamic QRIS and render to canvas
   try {
     const dynamicQris = qrisToDynamic(QRIS_STATIC, finalTotal);
-    QRCode.toCanvas(document.getElementById('qrisCanvas'), dynamicQris, {
-      width: 220, margin: 1, color: { dark: '#1a1a1a', light: '#ffffff' },
+    const qrEl = document.getElementById('qrisQR');
+    qrEl.innerHTML = '';
+    new QRCode(qrEl, {
+      text: dynamicQris,
+      width: 220, height: 220,
+      colorDark: '#1a1a1a', colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.H,
     });
   } catch (e) {
     console.error('QRIS generate error:', e);

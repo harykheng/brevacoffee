@@ -373,7 +373,7 @@
         Total: <strong id="qrisAmountText">Rp 0</strong>
       </div>
       <div class="qris-canvas-wrap">
-        <canvas id="qrisCanvas"></canvas>
+        <div id="qrisQR"></div>
       </div>
       <p class="qris-hint">Scan dengan aplikasi bank atau e-wallet kamu</p>
       <button class="btn-qris-confirm" id="btnQrisConfirm" onclick="confirmQrisPayment()">
@@ -383,7 +383,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="js/config.js"></script>
   <script src="js/catalog.js"></script>
 
