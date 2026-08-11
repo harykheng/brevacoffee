@@ -473,6 +473,7 @@
       <div id="orderDetailContent"></div>
       <div class="order-detail-actions">
         <button class="btn btn-secondary" onclick="closeOrderDetail()">Tutup</button>
+        <button class="btn btn-wa"        id="btnSendWA"       onclick="sendOrderSummaryToWA()">📤 WA Customer</button>
         <button class="btn btn-outline"   id="btnPrintLabel"   onclick="openPrintLabel()">🖨️ Print Label</button>
         <button class="btn btn-danger"    id="btnMarkCancel"   onclick="changeOrderStatus('cancelled')">❌ Batalkan</button>
         <button class="btn btn-success"   id="btnMarkDone"     onclick="changeOrderStatus('done')">✅ Selesai</button>

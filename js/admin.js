@@ -986,6 +986,12 @@ function renderOrderDetailHTML(o) {
         <span>−${formatPrice(o.discount_amount)}</span>
        </div>` : '';
 
+  const shippingRow = o.shipping_cost > 0
+    ? `<div class="order-detail-row">
+        <span>Ongkir${o.shipping_label ? ` (${escapeHTML(o.shipping_label)})` : ''}</span>
+        <span>${formatPrice(o.shipping_cost)}</span>
+       </div>` : '';
+
   const addrRow = o.order_type === 'delivery' && o.delivery_address
     ? `<div class="order-detail-field"><span class="order-field-label">Alamat</span><span>${escapeHTML(o.delivery_address)}</span></div>` : '';
   const noteRow = o.note
@@ -1004,11 +1010,63 @@ function renderOrderDetailHTML(o) {
       ${itemRows}
       <div class="order-detail-divider"></div>
       ${discountRow}
+      ${shippingRow}
       <div class="order-detail-row order-detail-total">
         <span>Total</span>
         <span>${formatPrice(o.total)}</span>
       </div>
     </div>`;
+}
+
+function sendOrderSummaryToWA() {
+  const o = currentDetailOrder;
+  if (!o) return;
+
+  const items = Array.isArray(o.items) ? o.items : [];
+  const statusMap = {
+    pending:   '⏳ Menunggu Konfirmasi',
+    confirmed: '🆕 Diproses',
+    done:      '✅ Selesai',
+    cancelled: '❌ Dibatalkan',
+  };
+
+  let msg = `Halo *${escapeTextForWA(o.customer_name)}*! 👋\n\n`;
+  msg += `Berikut ringkasan pesanan kamu di *Breva Coffee*:\n\n`;
+  msg += `📦 *#${o.order_number}*\n`;
+  msg += `🗓 ${o.order_date_label || o.order_date}\n`;
+  msg += `${o.order_type === 'pickup' ? '🏪 Pickup' : '🛵 Delivery'}\n\n`;
+
+  msg += `*Pesanan:*\n`;
+  items.forEach((it, i) => {
+    const v = it.vl?.length ? ` (${it.vl.join(', ')})` : '';
+    msg += `${i + 1}. ${it.nm}${v} ×${it.qty} — ${formatPrice(it.sub)}\n`;
+  });
+
+  msg += `\n`;
+  if (o.discount_amount > 0) {
+    msg += `Subtotal: ${formatPrice(o.subtotal || (o.total + o.discount_amount - (o.shipping_cost || 0)))}\n`;
+    msg += `Diskon (${o.promo_code}): −${formatPrice(o.discount_amount)}\n`;
+  }
+  if (o.shipping_cost > 0) {
+    msg += `Ongkir${o.shipping_label ? ` (${o.shipping_label})` : ''}: ${formatPrice(o.shipping_cost)}\n`;
+  }
+  msg += `*Total: ${formatPrice(o.total)}*\n`;
+
+  if (o.order_type === 'delivery' && o.delivery_address) {
+    msg += `\nAlamat: ${o.delivery_address}`;
+  }
+  if (o.note) {
+    msg += `\nCatatan: ${o.note}`;
+  }
+
+  msg += `\n\nStatus: ${statusMap[o.status] || o.status}`;
+  msg += `\n\nTerima kasih sudah order di Breva Coffee! ☕`;
+
+  window.open(`https://wa.me/${encodeURIComponent(o.customer_wa)}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+function escapeTextForWA(str) {
+  return (str || '').replace(/[*_~`]/g, '\\$&');
 }
 
 async function changeOrderStatus(newStatus, orderId = null) {
