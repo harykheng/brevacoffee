@@ -416,6 +416,8 @@ function renderCheckoutStep() {
 
     document.getElementById('coPickupCard').style.display  = 'none';
     document.getElementById('coDeliveryInput').style.display = 'block';
+    document.getElementById('coFromName').textContent = appSettings?.store_name    || STORE_NAME;
+    document.getElementById('coFromAddr').textContent = appSettings?.store_address || STORE_ADDRESS;
   }
 
   // Items list
