@@ -287,8 +287,8 @@
 
       <!-- Submit -->
       <div class="co-submit">
-        <button class="btn-wa-send" onclick="submitOrder()">
-          Kirim via WhatsApp 📱
+        <button class="btn-wa-send" onclick="showQrisPayment()">
+          Bayar via QRIS 💳
         </button>
       </div>
 
@@ -357,7 +357,29 @@
   <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
   <!-- SCRIPTS -->
+  <!-- QRIS Payment Modal -->
+  <div class="qris-overlay" id="qrisModal" style="display:none" role="dialog" aria-label="Pembayaran QRIS">
+    <div class="qris-box">
+      <button class="qris-close" onclick="closeQrisModal()" aria-label="Tutup">✕</button>
+      <div class="qris-header">
+        <span class="qris-logo">⬛ QRIS</span>
+        <span class="qris-title">Scan &amp; Bayar</span>
+      </div>
+      <div class="qris-total-row">
+        Total: <strong id="qrisAmountText">Rp 0</strong>
+      </div>
+      <div class="qris-canvas-wrap">
+        <canvas id="qrisCanvas"></canvas>
+      </div>
+      <p class="qris-hint">Scan dengan aplikasi bank atau e-wallet kamu</p>
+      <button class="btn-qris-confirm" id="btnQrisConfirm" onclick="confirmQrisPayment()">
+        ✅ Sudah Bayar — Konfirmasi via WhatsApp
+      </button>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
   <script src="js/config.js"></script>
   <script src="js/catalog.js"></script>
 

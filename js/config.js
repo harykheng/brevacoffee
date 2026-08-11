@@ -26,6 +26,9 @@ const BANNER_SUBTITLE = 'Cek semua menu terbaru Breva Coffee';
 const INSTAGRAM_URL = 'https://instagram.com/brevacoffee';
 const TIKTOK_URL    = 'https://tiktok.com/@brevacoffee';
 
+// QRIS statis merchant (dari bank/GoPay/OVO — ganti dengan QRIS Breva Coffee asli)
+const QRIS_STATIC = '00020101021126610014COM.GO-JEK.WWW01189360091432449962000210G2449962000303UMI51440014ID.CO.QRIS.WWW0215ID10243329840860303UMI5204597753033605802ID5925Oraiste Beauty House, BTC6014KOTA TANGERANG61051512262070703A0163049B66';
+
 // ================================================
 // INIT SUPABASE CLIENT
 // ================================================

@@ -809,7 +809,179 @@ async function submitOrder() {
     console.error('Submit order error:', err);
     showToast('Gagal mengirim pesanan. Coba lagi ya!', 'error');
   } finally {
-    if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Kirim via WhatsApp 📱'; }
+    if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Bayar via QRIS 💳'; }
+  }
+}
+
+// ================================================================
+// QRIS DINAMIS
+// ================================================================
+
+function crc16(str) {
+  let crc = 0xFFFF;
+  for (let i = 0; i < str.length; i++) {
+    crc ^= str.charCodeAt(i) << 8;
+    for (let j = 0; j < 8; j++) {
+      crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) : (crc << 1);
+      crc &= 0xFFFF;
+    }
+  }
+  return crc.toString(16).toUpperCase().padStart(4, '0');
+}
+
+function qrisToDynamic(staticQris, amount) {
+  // Remove the 4-char CRC value at the end (keep "6304" for recalculation)
+  let data = staticQris.slice(0, -4);
+  // Change Point of Initiation Method: 11 (static) → 12 (dynamic)
+  data = data.replace('010211', '010212');
+  // Insert Transaction Amount field (tag 54) before Country Code (tag 5802)
+  const amountStr = String(amount);
+  data = data.replace('5802ID', `54${String(amountStr.length).padStart(2, '0')}${amountStr}5802ID`);
+  // Recalculate CRC
+  return data + crc16(data + '6304');
+}
+
+// Shared state for QRIS flow
+let _qrisPendingOrder = null;
+
+function showQrisPayment() {
+  const name    = document.getElementById('customerName').value.trim();
+  const wa      = document.getElementById('customerWA').value.trim();
+  const note    = document.getElementById('customerNote').value.trim();
+  const address = orderType === 'delivery'
+    ? document.getElementById('customerAddress').value.trim() : '';
+
+  if (!name) { showToast('Masukkan nama kamu dulu ya!', 'error'); document.getElementById('customerName').focus(); return; }
+  if (!wa)   { showToast('Nomor WhatsApp wajib diisi!', 'error'); document.getElementById('customerWA').focus(); return; }
+  if (orderType === 'delivery' && !address) {
+    showToast('Masukkan alamat pengiriman dulu ya!', 'error');
+    document.getElementById('customerAddress').focus(); return;
+  }
+
+  const rawTotal   = cartTotal();
+  const discount   = getDiscountAmount();
+  const finalTotal = cartFinalTotal();
+  const orderNum   = `BRV-${Date.now().toString(36).toUpperCase().slice(-5)}`;
+
+  // Store order data for use when customer confirms
+  _qrisPendingOrder = {
+    orderNum, name, wa, note, address,
+    rawTotal, discount, finalTotal,
+    promoCode: activePromo?.code || null,
+    cartSnapshot: Object.entries(cart).map(([, { product, qty, variantLabels, extraPrice = 0 }]) => ({
+      nm: product.name, qty, vl: variantLabels || [],
+      up: product.price + (extraPrice || 0),
+      sub: (product.price + (extraPrice || 0)) * qty,
+    })),
+    cartRef: { ...cart },
+  };
+
+  // Show amount
+  document.getElementById('qrisAmountText').textContent = formatPrice(finalTotal);
+
+  // Generate dynamic QRIS and render to canvas
+  try {
+    const dynamicQris = qrisToDynamic(QRIS_STATIC, finalTotal);
+    QRCode.toCanvas(document.getElementById('qrisCanvas'), dynamicQris, {
+      width: 220, margin: 1, color: { dark: '#1a1a1a', light: '#ffffff' },
+    });
+  } catch (e) {
+    console.error('QRIS generate error:', e);
+    showToast('Gagal generate QR code', 'error');
+    return;
+  }
+
+  document.getElementById('qrisModal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeQrisModal() {
+  document.getElementById('qrisModal').style.display = 'none';
+  document.body.style.overflow = '';
+  _qrisPendingOrder = null;
+}
+
+async function confirmQrisPayment() {
+  if (!_qrisPendingOrder) return;
+  const o   = _qrisPendingOrder;
+  const btn = document.getElementById('btnQrisConfirm');
+  btn.disabled    = true;
+  btn.textContent = 'Mengirim...';
+
+  const typeLabel = orderType === 'pickup' ? 'Pickup' : 'Delivery';
+
+  let msg = `Halo *${STORE_NAME}*! 😊\n\n`;
+  msg += `✅ Saya sudah bayar via QRIS untuk pesanan berikut:\n\n`;
+  msg += `*Pesanan #${o.orderNum}:*\n`;
+  o.cartSnapshot.forEach((it, i) => {
+    const v = it.vl?.length ? ` (${it.vl.join(', ')})` : '';
+    msg += `${i + 1}. ${it.nm}${v} ×${it.qty} — ${formatPrice(it.sub)}\n`;
+  });
+  if (o.discount > 0) {
+    msg += `\nSubtotal: ${formatPrice(o.rawTotal)}\n`;
+    msg += `Diskon (${o.promoCode}): −${formatPrice(o.discount)}\n`;
+    msg += `*Total: ${formatPrice(o.finalTotal)}*\n\n`;
+  } else {
+    msg += `\n*Total: ${formatPrice(o.finalTotal)}*\n\n`;
+  }
+  msg += `---\n`;
+  msg += `Nama: ${o.name}\n`;
+  msg += `WhatsApp: ${o.wa}\n`;
+  msg += `Tipe: ${typeLabel}\n`;
+  msg += `Tanggal: ${selectedDateLabel}\n`;
+  if (orderType === 'delivery') msg += `Alamat: ${o.address}\n`;
+  if (o.note) msg += `Catatan: ${o.note}\n`;
+
+  try {
+    const { error } = await supabaseClient.from('orders').insert({
+      order_number:    o.orderNum,
+      customer_name:   o.name,
+      customer_wa:     o.wa,
+      order_type:      orderType,
+      order_date:      selectedDate,
+      order_date_label: selectedDateLabel,
+      delivery_address: orderType === 'delivery' ? o.address : null,
+      note:            o.note || null,
+      items:           o.cartSnapshot,
+      subtotal:        o.rawTotal,
+      promo_code:      o.promoCode,
+      discount_amount: o.discount,
+      total:           o.finalTotal,
+      status:          'pending',
+    });
+    if (error) throw error;
+
+    window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(msg)}`, '_blank');
+
+    // Reset everything
+    closeQrisModal();
+    cart = {};
+    activePromo = null;
+    products.forEach(p => {
+      if (p.variants?.length) updateVariantBadge(p.id);
+      else refreshCard(p.id);
+    });
+    syncStickyFooter();
+    document.getElementById('customerName').value = '';
+    document.getElementById('customerWA').value   = '';
+    document.getElementById('customerNote').value = '';
+    if (orderType === 'delivery') {
+      document.getElementById('customerAddress').value = '';
+      const verify = document.getElementById('addressMapsVerify');
+      if (verify) { verify.style.display = 'none'; verify.href = '#'; }
+      const locBtn = document.getElementById('btnUseLocation');
+      if (locBtn) locBtn.querySelector('.btn-loc-text').textContent = 'Gunakan Lokasi Saya';
+    }
+    document.getElementById('step3').classList.remove('active');
+    document.getElementById('step1').classList.add('active');
+    window.scrollTo(0, 0);
+    showToast('Konfirmasi terkirim! Pesanan sedang diproses 🎉', 'success');
+
+  } catch (err) {
+    console.error('Confirm QRIS error:', err);
+    showToast('Gagal menyimpan pesanan. Coba lagi ya!', 'error');
+    btn.disabled    = false;
+    btn.textContent = '✅ Sudah Bayar — Konfirmasi via WhatsApp';
   }
 }
 
