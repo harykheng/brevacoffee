@@ -19,6 +19,13 @@ let pendingQty      = 1;
 // promo state
 let activePromo = null;         // { code, discount_type, discount_value, min_order }
 
+// delivery / ongkir state
+let _deliveryLat      = null;
+let _deliveryLng      = null;
+let _selectedShipping = null;   // { price, name }
+let _acResults        = [];     // LocationIQ autocomplete results
+let _ongkirPricing    = [];     // Biteship pricing results
+
 // ---- HELPERS ----
 const DAYS   = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
 const MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
@@ -336,7 +343,10 @@ function getDiscountAmount() {
     return Math.round(raw * activePromo.discount_value / 100);
   return Math.min(activePromo.discount_value, raw);
 }
-function cartFinalTotal() { return Math.max(0, cartTotal() - getDiscountAmount()); }
+function getShippingCost() {
+  return (_selectedShipping && orderType === 'delivery') ? _selectedShipping.price : 0;
+}
+function cartFinalTotal() { return Math.max(0, cartTotal() - getDiscountAmount() + getShippingCost()); }
 
 function getProductCartQty(productId) {
   return Object.entries(cart)
@@ -435,14 +445,22 @@ function renderCheckoutStep() {
 }
 
 function renderCheckoutTotals() {
-  const discount = getDiscountAmount();
-  const discRow  = document.getElementById('coDiscountRow');
-  if (discount > 0) {
-    discRow.style.display = '';
-    document.getElementById('coDiscountAmount').textContent = `−${formatPrice(discount)}`;
+  const discount    = getDiscountAmount();
+  const shipping    = getShippingCost();
+  const discRow     = document.getElementById('coDiscountRow');
+  const shippingRow = document.getElementById('coShippingRow');
+
+  discRow.style.display = discount > 0 ? '' : 'none';
+  if (discount > 0) document.getElementById('coDiscountAmount').textContent = `−${formatPrice(discount)}`;
+
+  if (shipping > 0) {
+    shippingRow.style.display = '';
+    document.getElementById('coShippingLabel').textContent  = `🛵 ${_selectedShipping.name}`;
+    document.getElementById('coShippingAmount').textContent = formatPrice(shipping);
   } else {
-    discRow.style.display = 'none';
+    shippingRow.style.display = 'none';
   }
+
   document.getElementById('coTotalAmount').textContent = formatPrice(cartFinalTotal());
 }
 
@@ -706,6 +724,14 @@ async function useMyLocation() {
 let _acTimer = null;
 
 function onAddressInput(textarea) {
+  _deliveryLat = null;
+  _deliveryLng = null;
+  if (_selectedShipping) {
+    _selectedShipping = null;
+    const ob = document.getElementById('ongkirOptions');
+    if (ob) { ob.innerHTML = ''; ob.style.display = 'none'; }
+    renderCheckoutTotals();
+  }
   const q = textarea.value;
   clearTimeout(_acTimer);
   if (q.length < 3) { hideAddressSuggestions(); return; }
@@ -723,19 +749,24 @@ async function fetchAddressSuggestions(q) {
 }
 
 function renderAddressSuggestions(results) {
-  const box = document.getElementById('addressSuggestions');
-  if (!results || results.length === 0) { hideAddressSuggestions(); return; }
+  _acResults    = results || [];
+  const box     = document.getElementById('addressSuggestions');
+  if (!_acResults.length) { hideAddressSuggestions(); return; }
 
-  box.innerHTML = results.map(r => {
+  box.innerHTML = _acResults.map((r, i) => {
     const label = escapeHTML(r.display_name || r.display_place || '');
-    return `<div class="address-suggestion-item" onmousedown="selectAddressSuggestion(${JSON.stringify(r.display_name || '')})">${label}</div>`;
+    return `<div class="address-suggestion-item" onmousedown="selectAddressSuggestion(${i})">${label}</div>`;
   }).join('');
   box.style.display = 'block';
 }
 
-function selectAddressSuggestion(displayName) {
-  const textarea = document.getElementById('customerAddress');
-  textarea.value = displayName;
+function selectAddressSuggestion(index) {
+  const r = _acResults[index];
+  if (!r) return;
+  const textarea   = document.getElementById('customerAddress');
+  textarea.value   = r.display_name || r.display_place || '';
+  _deliveryLat     = parseFloat(r.lat);
+  _deliveryLng     = parseFloat(r.lon);
   hideAddressSuggestions();
   textarea.focus();
 }
@@ -748,6 +779,101 @@ function hideAddressSuggestions() {
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.address-autocomplete-wrap')) hideAddressSuggestions();
 });
+
+// ================================================================
+// BITESHIP — cek ongkir GoSend / GrabExpress
+// ================================================================
+
+async function geocodeAddress(addr) {
+  try {
+    const url  = `https://api.locationiq.com/v1/search?key=${LOCATIONIQ_KEY}&q=${encodeURIComponent(addr)}&format=json&limit=1&countrycodes=id`;
+    const res  = await fetch(url);
+    if (!res.ok) return false;
+    const data = await res.json();
+    if (!data || !data.length) return false;
+    _deliveryLat = parseFloat(data[0].lat);
+    _deliveryLng = parseFloat(data[0].lon);
+    return true;
+  } catch { return false; }
+}
+
+async function checkOngkir() {
+  if (!BITESHIP_API_KEY) {
+    showToast('Fitur cek ongkir belum dikonfigurasi.', 'error');
+    return;
+  }
+  const btn = document.getElementById('btnCheckOngkir');
+
+  if (!_deliveryLat || !_deliveryLng) {
+    const addr = document.getElementById('customerAddress').value.trim();
+    if (!addr) { showToast('Isi alamat pengiriman dulu ya!', 'error'); return; }
+    btn.disabled = true; btn.textContent = 'Mencari alamat...';
+    const ok = await geocodeAddress(addr);
+    if (!ok) {
+      btn.disabled = false; btn.textContent = '🛵 Cek Ongkir';
+      showToast('Alamat tidak ditemukan. Coba pilih dari saran ya.', 'error');
+      return;
+    }
+  }
+
+  btn.disabled = true; btn.textContent = 'Mengecek ongkir...';
+  try {
+    const res = await fetch('https://api.biteship.com/v1/rates/couriers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${BITESHIP_API_KEY}` },
+      body: JSON.stringify({
+        origin_latitude:       STORE_LAT,
+        origin_longitude:      STORE_LNG,
+        destination_latitude:  _deliveryLat,
+        destination_longitude: _deliveryLng,
+        couriers: 'gojek,grab',
+        items: [{
+          name: 'Pesanan Breva Coffee', description: 'Minuman & makanan',
+          value: cartTotal(), length: 20, width: 20, height: 15, weight: 500,
+        }],
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Gagal');
+    renderOngkirOptions(data.pricing || []);
+  } catch (err) {
+    console.error('Ongkir error:', err);
+    showToast('Gagal cek ongkir. Coba lagi ya.', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '🛵 Cek Ongkir';
+  }
+}
+
+function renderOngkirOptions(pricing) {
+  _ongkirPricing = pricing;
+  const box = document.getElementById('ongkirOptions');
+  if (!pricing.length) {
+    box.innerHTML = '<p class="ongkir-empty">Layanan tidak tersedia untuk alamat ini. Hubungi admin via WA ya.</p>';
+    box.style.display = 'block';
+    return;
+  }
+  pricing.sort((a, b) => a.price - b.price);
+  box.innerHTML = '<p class="ongkir-pick-label">Pilih layanan pengiriman:</p>' + pricing.map((p, i) => {
+    const name = `${p.courier_name} ${p.courier_service_name || ''}`.trim();
+    const dur  = p.duration ? `<span class="ongkir-duration">${escapeHTML(p.duration)}</span>` : '';
+    return `<label class="ongkir-option">
+      <input type="radio" name="ongkir" value="${i}" onchange="selectOngkir(${i})">
+      <span class="ongkir-info"><span class="ongkir-name">${escapeHTML(name)}</span>${dur}</span>
+      <span class="ongkir-price">${formatPrice(p.price)}</span>
+    </label>`;
+  }).join('');
+  box.style.display = 'block';
+}
+
+function selectOngkir(index) {
+  const p = _ongkirPricing[index];
+  if (!p) return;
+  _selectedShipping = {
+    price: p.price,
+    name:  `${p.courier_name} ${p.courier_service_name || ''}`.trim(),
+  };
+  renderCheckoutTotals();
+}
 
 async function submitOrder() {
   const name    = document.getElementById('customerName').value.trim();
@@ -907,16 +1033,24 @@ function showQrisPayment() {
     showToast('Masukkan alamat pengiriman dulu ya!', 'error');
     document.getElementById('customerAddress').focus(); return;
   }
+  if (orderType === 'delivery' && !_selectedShipping) {
+    showToast('Pilih layanan pengiriman dulu ya!', 'error');
+    document.getElementById('ongkirOptions').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
 
-  const rawTotal   = cartTotal();
-  const discount   = getDiscountAmount();
-  const finalTotal = cartFinalTotal();
-  const orderNum   = `BRV-${Date.now().toString(36).toUpperCase().slice(-5)}`;
+  const rawTotal      = cartTotal();
+  const discount      = getDiscountAmount();
+  const shippingCost  = getShippingCost();
+  const finalTotal    = cartFinalTotal();
+  const orderNum      = `BRV-${Date.now().toString(36).toUpperCase().slice(-5)}`;
 
   // Store order data for use when customer confirms
   _qrisPendingOrder = {
     orderNum, name, wa, note, address,
-    rawTotal, discount, finalTotal,
+    rawTotal, discount, shippingCost,
+    shippingName: _selectedShipping?.name || null,
+    finalTotal,
     promoCode: activePromo?.code || null,
     cartSnapshot: Object.entries(cart).map(([, { product, qty, variantLabels, extraPrice = 0 }]) => ({
       nm: product.name, qty, vl: variantLabels || [],
@@ -967,19 +1101,20 @@ async function confirmQrisPayment() {
     const v = it.vl?.length ? ` (${it.vl.join(', ')})` : '';
     msg += `${i + 1}. ${it.nm}${v} ×${it.qty} — ${formatPrice(it.sub)}\n`;
   });
-  if (o.discount > 0) {
+  const needsBreakdown = o.discount > 0 || o.shippingCost > 0;
+  if (needsBreakdown) {
     msg += `\nSubtotal: ${formatPrice(o.rawTotal)}\n`;
-    msg += `Diskon (${o.promoCode}): −${formatPrice(o.discount)}\n`;
-    msg += `*Total: ${formatPrice(o.finalTotal)}*\n\n`;
-  } else {
-    msg += `\n*Total: ${formatPrice(o.finalTotal)}*\n\n`;
+    if (o.discount > 0)    msg += `Diskon (${o.promoCode}): −${formatPrice(o.discount)}\n`;
+    if (o.shippingCost > 0) msg += `Ongkos kirim (${o.shippingName}): ${formatPrice(o.shippingCost)}\n`;
   }
+  msg += `\n*Total: ${formatPrice(o.finalTotal)}*\n\n`;
   msg += `---\n`;
   msg += `Nama: ${o.name}\n`;
   msg += `WhatsApp: ${o.wa}\n`;
   msg += `Tipe: ${typeLabel}\n`;
   msg += `Tanggal: ${selectedDateLabel}\n`;
   if (orderType === 'delivery') msg += `Alamat: ${o.address}\n`;
+  if (orderType === 'delivery' && o.shippingName) msg += `Kurir: ${o.shippingName}\n`;
   if (o.note) msg += `Catatan: ${o.note}\n`;
 
   try {
@@ -1021,6 +1156,9 @@ async function confirmQrisPayment() {
       if (verify) { verify.style.display = 'none'; verify.href = '#'; }
       const locBtn = document.getElementById('btnUseLocation');
       if (locBtn) locBtn.querySelector('.btn-loc-text').textContent = 'Gunakan Lokasi Saya';
+      _deliveryLat = null; _deliveryLng = null; _selectedShipping = null;
+      const ob = document.getElementById('ongkirOptions');
+      if (ob) { ob.innerHTML = ''; ob.style.display = 'none'; }
     }
     document.getElementById('step3').classList.remove('active');
     document.getElementById('step1').classList.add('active');

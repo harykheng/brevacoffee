@@ -684,6 +684,85 @@
 }
 .address-maps-verify:hover { text-decoration: underline; }
 
+/* ---- ONGKIR CHECK ---- */
+.btn-check-ongkir {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 10px 18px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: 'Nunito', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  align-self: flex-start;
+}
+.btn-check-ongkir:hover  { background: var(--primary-dark, #4a2c1a); }
+.btn-check-ongkir:active { transform: scale(0.97); }
+.btn-check-ongkir:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+#ongkirOptions {
+  margin-top: 10px;
+  border: 1.5px solid var(--latte-light);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.ongkir-pick-label {
+  margin: 0;
+  padding: 10px 14px 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ongkir-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  cursor: pointer;
+  border-top: 1px solid var(--latte-xlight);
+  transition: background 0.15s;
+}
+.ongkir-option:first-of-type { border-top: none; }
+.ongkir-option:hover { background: var(--latte-xlight); }
+.ongkir-option input[type="radio"] { accent-color: var(--primary); flex-shrink: 0; }
+
+.ongkir-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.ongkir-name { font-size: 13px; font-weight: 700; color: var(--text-dark); }
+.ongkir-duration { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.ongkir-price { font-size: 13px; font-weight: 800; color: var(--primary); white-space: nowrap; }
+
+.ongkir-empty {
+  margin: 0;
+  padding: 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ---- SHIPPING ROW IN TOTALS ---- */
+.co-shipping-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--cream);
+}
+.co-shipping-amount {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
 /* ---- CO ITEMS LIST ---- */
 .co-item {
   display: flex;
