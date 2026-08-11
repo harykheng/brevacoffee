@@ -1161,11 +1161,13 @@
 }
 
 /* ================================================================
-   STEP 4 — QRIS PAYMENT PAGE
+   QRIS PAYMENT MODAL
    ================================================================ */
-#step4.active {
-  display: flex;
-  animation: none;
+#qrisModal {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  overflow-y: auto;
 }
 
 .qp-page {

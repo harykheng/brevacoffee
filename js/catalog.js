@@ -1063,15 +1063,15 @@ function showQrisPayment() {
     return;
   }
 
-  document.getElementById('step3').classList.remove('active');
-  document.getElementById('step4').classList.add('active');
-  window.scrollTo(0, 0);
+  const modal = document.getElementById('qrisModal');
+  modal.style.display = 'flex';
+  modal.scrollTop = 0;
+  document.body.style.overflow = 'hidden';
 }
 
 function goBackFromQris() {
-  document.getElementById('step4').classList.remove('active');
-  document.getElementById('step3').classList.add('active');
-  window.scrollTo(0, 0);
+  document.getElementById('qrisModal').style.display = 'none';
+  document.body.style.overflow = '';
   _qrisPendingOrder = null;
 }
 
@@ -1135,7 +1135,8 @@ async function confirmQrisPayment() {
     if (error) throw error;
 
     _ossWaUrl = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(msg)}`;
-    document.getElementById('step4').classList.remove('active');
+    document.getElementById('qrisModal').style.display = 'none';
+    document.body.style.overflow = '';
     showOrderSummary(o);
 
   } catch (err) {
@@ -1154,10 +1155,12 @@ function showOrderSummary(o) {
   // Code
   document.getElementById('ossCode').textContent = o.orderNum;
 
-  // Delivery section
+  // Delivery / Pickup section
   const deliverySection = document.getElementById('ossDeliverySection');
+  const deliveryHeader  = document.getElementById('ossDeliveryHeader');
   if (orderType === 'delivery' && o.address) {
     deliverySection.style.display = '';
+    deliveryHeader.innerHTML = '<span>🛵</span> PENGIRIMAN';
     const rows = [
       ['Penerima', o.name],
       ['Telepon',  o.wa],
@@ -1171,6 +1174,29 @@ function showOrderSummary(o) {
         <span class="oss-row-value">${escapeHTML(val || '')}</span>
       </div>`
     ).join('');
+  } else if (orderType === 'pickup') {
+    deliverySection.style.display = '';
+    deliveryHeader.innerHTML = '<span>🏠</span> LOKASI PICKUP';
+    const mapsLink = STORE_MAPS_URL
+      ? `<a href="${escapeHTML(STORE_MAPS_URL)}" target="_blank" rel="noopener" style="color:#a05230;word-break:break-all">${escapeHTML(STORE_ADDRESS)}</a>`
+      : escapeHTML(STORE_ADDRESS);
+    document.getElementById('ossDeliveryRows').innerHTML = `
+      <div class="oss-row">
+        <span class="oss-row-label">Toko</span>
+        <span class="oss-row-value">${escapeHTML(STORE_NAME)}</span>
+      </div>
+      <div class="oss-row">
+        <span class="oss-row-label">Alamat</span>
+        <span class="oss-row-value">${mapsLink}</span>
+      </div>
+      <div class="oss-row">
+        <span class="oss-row-label">Jam Buka</span>
+        <span class="oss-row-value">${escapeHTML(STORE_OPEN_HOURS)}</span>
+      </div>
+      <div class="oss-row">
+        <span class="oss-row-label">Tanggal</span>
+        <span class="oss-row-value">${escapeHTML(selectedDateLabel)}</span>
+      </div>`;
   } else {
     deliverySection.style.display = 'none';
   }
