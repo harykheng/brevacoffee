@@ -1017,9 +1017,11 @@ function showQrisPayment() {
   const note    = document.getElementById('customerNote').value.trim();
   const address = orderType === 'delivery'
     ? document.getElementById('customerAddress').value.trim() : '';
+  const addressNote = orderType === 'delivery'
+    ? (document.getElementById('customerAddressNote')?.value.trim() || '') : '';
 
-  if (!name) { showToast('Masukkan nama kamu dulu ya!', 'error'); document.getElementById('customerName').focus(); return; }
-  if (!wa)   { showToast('Nomor WhatsApp wajib diisi!', 'error'); document.getElementById('customerWA').focus(); return; }
+  if (!name) { showToast('Isi detail pemesan dulu ya!', 'error'); openProfileModal(); return; }
+  if (!wa)   { showToast('Nomor WhatsApp wajib diisi!', 'error'); openProfileModal(); return; }
   if (orderType === 'delivery' && !address) {
     showToast('Masukkan alamat pengiriman dulu ya!', 'error');
     document.getElementById('customerAddress').focus(); return;
@@ -1032,7 +1034,7 @@ function showQrisPayment() {
 
   // Store order data for use when customer confirms
   _qrisPendingOrder = {
-    orderNum, name, wa, note, address,
+    orderNum, name, wa, note, address, addressNote,
     rawTotal, discount, shippingCost,
     shippingLabel: _selectedShipping?.label || null,
     finalTotal,
@@ -1070,6 +1072,31 @@ function showQrisPayment() {
   modal.scrollTop = 0;
   document.body.style.overflow = 'hidden';
 }
+
+// ── Profile modal ──────────────────────────────────────────────
+function openProfileModal() {
+  document.getElementById('profileModal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => document.getElementById('customerName').focus(), 100);
+}
+
+function closeProfileModal() {
+  document.getElementById('profileModal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function saveProfile() {
+  const name = document.getElementById('customerName').value.trim();
+  const wa   = document.getElementById('customerWA').value.trim();
+  if (!name) { showToast('Nama wajib diisi!', 'error'); document.getElementById('customerName').focus(); return; }
+  if (!wa)   { showToast('Nomor WhatsApp wajib diisi!', 'error'); document.getElementById('customerWA').focus(); return; }
+  const card = document.getElementById('profileCard');
+  document.getElementById('profileCardName').textContent = name;
+  document.getElementById('profileCardSub').textContent  = wa;
+  card.classList.add('is-filled');
+  closeProfileModal();
+}
+// ───────────────────────────────────────────────────────────────
 
 function saveQrisImage() {
   const canvas = document.querySelector('#qrisQR canvas');
@@ -1120,6 +1147,7 @@ async function confirmQrisPayment() {
   msg += `Tanggal: ${selectedDateLabel}\n`;
   if (orderType === 'delivery') {
     msg += `Alamat: ${o.address}\n`;
+    if (o.addressNote) msg += `Catatan alamat: ${o.addressNote}\n`;
     if (o.shippingLabel) msg += `Kurir: ${o.shippingLabel}\n`;
   }
   if (o.note) msg += `Catatan: ${o.note}\n`;
@@ -1180,6 +1208,7 @@ function showOrderSummary(o) {
       ['Penerima', o.name],
       ['Telepon',  o.wa],
       ['Alamat',   o.address],
+      ...(o.addressNote ? [['Catatan alamat', o.addressNote]] : []),
       ...(o.shippingLabel ? [['Kurir', o.shippingLabel]] : []),
       ['Tanggal',  selectedDateLabel],
     ];
