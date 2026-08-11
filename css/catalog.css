@@ -1299,6 +1299,131 @@
 .btn-qp-confirm:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
 /* ================================================================
+   PROFILE MODAL (detail pemesan bottom sheet)
+   ================================================================ */
+.profile-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 600;
+  display: flex;
+  align-items: flex-end;
+}
+
+.profile-sheet {
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  padding: 0 20px 36px;
+  animation: slideUp 0.25s ease;
+}
+
+.profile-sheet-drag {
+  width: 36px;
+  height: 4px;
+  background: #ddd;
+  border-radius: 2px;
+  margin: 12px auto 20px;
+}
+
+.profile-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.profile-sheet-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.profile-sheet-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #f5f5f5;
+  border-radius: 50%;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+}
+
+.btn-profile-save {
+  width: 100%;
+  padding: 15px;
+  background: #553125;
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-profile-save:hover  { opacity: 0.88; }
+.btn-profile-save:active { transform: scale(0.98); }
+
+/* Profile card in checkout */
+.profile-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fff;
+  border: 1.5px solid #e8e0d8;
+  border-radius: 14px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.profile-card:hover { background: #faf6f3; }
+
+.profile-card-avatar {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.profile-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-card-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-card-sub {
+  font-size: 12px;
+  color: #a08878;
+  margin-top: 2px;
+}
+
+.profile-card-arrow {
+  font-size: 20px;
+  color: #c4a898;
+  flex-shrink: 0;
+}
+
+.profile-card.is-filled .profile-card-name { color: #2d1a0e; }
+.profile-card.is-filled .profile-card-sub  { color: #7a5538; }
+
+/* Label optional hint */
+.label-opt {
+  font-weight: 400;
+  color: #a08878;
+  font-size: 12px;
+}
+
+/* ================================================================
    ORDER SUMMARY MODAL (after QRIS confirm)
    ================================================================ */
 .oss-overlay {

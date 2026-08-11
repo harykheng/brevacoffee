@@ -253,19 +253,23 @@
             </div>
             <div id="ongkirOptions"></div>
           </div>
+          <div class="form-group" style="margin-top:10px;margin-bottom:0">
+            <label for="customerAddressNote">Catatan Alamat <span class="label-opt">(opsional)</span></label>
+            <input type="text" id="customerAddressNote" placeholder="No. unit, lantai, patokan, kode gate...">
+          </div>
         </div>
       </div>
 
-      <!-- Section: Info pemesan -->
+      <!-- Section: Info pemesan (profile card) -->
       <div class="co-section">
         <div class="co-section-title">Info Pemesan</div>
-        <div class="form-group">
-          <label for="customerName">Nama</label>
-          <input type="text" id="customerName" placeholder="Nama kamu..." required autocomplete="name">
-        </div>
-        <div class="form-group" style="margin-bottom:0">
-          <label for="customerWA">Nomor WhatsApp</label>
-          <input type="tel" id="customerWA" placeholder="08xxxxxxxxxx" required autocomplete="tel">
+        <div class="profile-card" id="profileCard" onclick="openProfileModal()" role="button" tabindex="0">
+          <div class="profile-card-avatar">👤</div>
+          <div class="profile-card-info">
+            <div class="profile-card-name" id="profileCardName">Tambahkan detail pemesan</div>
+            <div class="profile-card-sub" id="profileCardSub">Nama &amp; Nomor WhatsApp</div>
+          </div>
+          <div class="profile-card-arrow">›</div>
         </div>
       </div>
 
@@ -334,6 +338,26 @@
         <div class="footer-powered">Powered by <span class="footer-brand">Studio Harel</span></div>
       </footer>
 
+    </div>
+  </div>
+
+  <!-- PROFILE MODAL (nama & WA) -->
+  <div class="profile-overlay" id="profileModal" style="display:none" onclick="closeProfileModal()">
+    <div class="profile-sheet" onclick="event.stopPropagation()">
+      <div class="profile-sheet-drag"></div>
+      <div class="profile-sheet-header">
+        <span class="profile-sheet-title">Detail Pemesan</span>
+        <button class="profile-sheet-close" onclick="closeProfileModal()" aria-label="Tutup">✕</button>
+      </div>
+      <div class="form-group">
+        <label for="customerName">Nama *</label>
+        <input type="text" id="customerName" placeholder="Nama kamu..." autocomplete="name">
+      </div>
+      <div class="form-group" style="margin-bottom:24px">
+        <label for="customerWA">Nomor WhatsApp *</label>
+        <input type="tel" id="customerWA" placeholder="08xxxxxxxxxx" autocomplete="tel">
+      </div>
+      <button class="btn-profile-save" onclick="saveProfile()">Simpan</button>
     </div>
   </div>
 
