@@ -1528,6 +1528,23 @@
 }
 .btn-oss-wa:hover { background: #1da851; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(37,211,102,0.3); }
 
+.btn-oss-qr {
+  display: block;
+  width: calc(100% - 32px);
+  margin: 0 16px 16px;
+  padding: 13px;
+  background: transparent;
+  color: #553125;
+  border: 1.5px solid #c4a898;
+  border-radius: var(--radius-lg);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-oss-qr:hover { background: #f5ede8; }
+
 .oss-card {
   margin: 0 16px 12px;
   background: var(--white);
