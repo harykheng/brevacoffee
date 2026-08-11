@@ -384,8 +384,54 @@
       </div>
       <p class="qris-hint">Scan dengan aplikasi bank atau e-wallet kamu</p>
       <button class="btn-qris-confirm" id="btnQrisConfirm" onclick="confirmQrisPayment()">
-        ✅ Sudah Bayar — Konfirmasi via WhatsApp
+        Konfirmasi Pesanan
       </button>
+    </div>
+  </div>
+
+  <!-- ORDER SUMMARY MODAL (shown after QRIS confirm) -->
+  <div class="oss-overlay" id="orderSummaryModal" style="display:none" role="dialog" aria-label="Ringkasan Pesanan">
+    <div class="oss-scroll">
+
+      <div class="oss-topbar">
+        <button class="oss-close" onclick="closeOrderSummary()" aria-label="Tutup">✕</button>
+      </div>
+
+      <div class="oss-header">
+        <h2 class="oss-title">Satu langkah lagi!</h2>
+        <p class="oss-subtitle" id="ossSubtitle"></p>
+      </div>
+
+      <div class="oss-warning">
+        <span>⚠️</span> WAJIB — KIRIM FOTO BUKTI PEMBAYARAN
+      </div>
+
+      <button class="btn-oss-wa" onclick="sendWhatsAppProof()">
+        💬 Kirim Bukti Transfer via WhatsApp
+      </button>
+
+      <!-- Kode pesanan -->
+      <div class="oss-card">
+        <div class="oss-card-label">KODE PESANAN</div>
+        <div class="oss-code-row">
+          <div class="oss-code" id="ossCode">-</div>
+          <button class="btn-oss-copy" onclick="copyOrderCode()">📋 Salin</button>
+        </div>
+      </div>
+
+      <!-- Pengiriman (delivery only) -->
+      <div class="oss-section" id="ossDeliverySection" style="display:none">
+        <div class="oss-section-header"><span>🛵</span> PENGIRIMAN</div>
+        <div id="ossDeliveryRows"></div>
+      </div>
+
+      <!-- Daftar pesanan -->
+      <div class="oss-section">
+        <div class="oss-section-header"><span>📦</span> PESANAN</div>
+        <div id="ossItems"></div>
+        <div id="ossTotals"></div>
+      </div>
+
     </div>
   </div>
 

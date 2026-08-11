@@ -1101,12 +1101,15 @@ function closeQrisModal() {
   _qrisPendingOrder = null;
 }
 
+// WA URL stored after order saved, used by sendWhatsAppProof()
+let _ossWaUrl = null;
+
 async function confirmQrisPayment() {
   if (!_qrisPendingOrder) return;
   const o   = _qrisPendingOrder;
   const btn = document.getElementById('btnQrisConfirm');
   btn.disabled    = true;
-  btn.textContent = 'Mengirim...';
+  btn.textContent = 'Menyimpan...';
 
   const typeLabel = orderType === 'pickup' ? 'Pickup' : 'Delivery';
 
@@ -1138,61 +1141,153 @@ async function confirmQrisPayment() {
 
   try {
     const { error } = await supabaseClient.from('orders').insert({
-      order_number:    o.orderNum,
-      customer_name:   o.name,
-      customer_wa:     o.wa,
-      order_type:      orderType,
-      order_date:      selectedDate,
+      order_number:     o.orderNum,
+      customer_name:    o.name,
+      customer_wa:      o.wa,
+      order_type:       orderType,
+      order_date:       selectedDate,
       order_date_label: selectedDateLabel,
       delivery_address: orderType === 'delivery' ? o.address : null,
-      note:            o.note || null,
-      items:           o.cartSnapshot,
-      subtotal:        o.rawTotal,
-      promo_code:      o.promoCode,
-      discount_amount: o.discount,
-      shipping_cost:   o.shippingCost || null,
-      shipping_label:  o.shippingLabel || null,
-      total:           o.finalTotal,
-      status:          'pending',
+      note:             o.note || null,
+      items:            o.cartSnapshot,
+      subtotal:         o.rawTotal,
+      promo_code:       o.promoCode,
+      discount_amount:  o.discount,
+      shipping_cost:    o.shippingCost || null,
+      shipping_label:   o.shippingLabel || null,
+      total:            o.finalTotal,
+      status:           'pending',
     });
     if (error) throw error;
 
-    window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(msg)}`, '_blank');
-
-    // Reset everything
+    _ossWaUrl = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(msg)}`;
     closeQrisModal();
-    cart = {};
-    activePromo = null;
-    _selectedShipping = null;
-    _ongkirPricing    = [];
-    products.forEach(p => {
-      if (p.variants?.length) updateVariantBadge(p.id);
-      else refreshCard(p.id);
-    });
-    syncStickyFooter();
-    document.getElementById('customerName').value = '';
-    document.getElementById('customerWA').value   = '';
-    document.getElementById('customerNote').value = '';
-    if (orderType === 'delivery') {
-      document.getElementById('customerAddress').value = '';
-      const verify = document.getElementById('addressMapsVerify');
-      if (verify) { verify.style.display = 'none'; verify.href = '#'; }
-      const locBtn = document.getElementById('btnUseLocation');
-      if (locBtn) locBtn.querySelector('.btn-loc-text').textContent = 'Gunakan Lokasi Saya';
-      _deliveryLat = null; _deliveryLng = null;
-      const ongkirBox = document.getElementById('ongkirOptions');
-      if (ongkirBox) ongkirBox.innerHTML = '';
-    }
-    document.getElementById('step3').classList.remove('active');
-    document.getElementById('step1').classList.add('active');
-    window.scrollTo(0, 0);
-    showToast('Konfirmasi terkirim! Pesanan sedang diproses 🎉', 'success');
+    showOrderSummary(o);
 
   } catch (err) {
     console.error('Confirm QRIS error:', err);
     showToast('Gagal menyimpan pesanan. Coba lagi ya!', 'error');
     btn.disabled    = false;
-    btn.textContent = '✅ Sudah Bayar — Konfirmasi via WhatsApp';
+    btn.textContent = 'Konfirmasi Pesanan';
+  }
+}
+
+function showOrderSummary(o) {
+  // Subtitle
+  document.getElementById('ossSubtitle').innerHTML =
+    `Pesanan <strong>#${escapeHTML(o.orderNum)}</strong> belum kami proses sampai kamu kirim <strong>foto bukti pembayaran QRIS</strong> via WhatsApp.`;
+
+  // Code
+  document.getElementById('ossCode').textContent = o.orderNum;
+
+  // Delivery section
+  const deliverySection = document.getElementById('ossDeliverySection');
+  if (orderType === 'delivery' && o.address) {
+    deliverySection.style.display = '';
+    const rows = [
+      ['Penerima', o.name],
+      ['Telepon',  o.wa],
+      ['Alamat',   o.address],
+      ...(o.shippingLabel ? [['Kurir', o.shippingLabel]] : []),
+      ['Tanggal',  selectedDateLabel],
+    ];
+    document.getElementById('ossDeliveryRows').innerHTML = rows.map(([label, val]) =>
+      `<div class="oss-row">
+        <span class="oss-row-label">${escapeHTML(label)}</span>
+        <span class="oss-row-value">${escapeHTML(val || '')}</span>
+      </div>`
+    ).join('');
+  } else {
+    deliverySection.style.display = 'none';
+  }
+
+  // Items
+  document.getElementById('ossItems').innerHTML = o.cartSnapshot.map(it => {
+    const varHTML = it.vl?.length
+      ? it.vl.map(v => `<div class="oss-item-var">— ${escapeHTML(v)}</div>`).join('')
+      : `<div class="oss-item-meta">× ${it.qty}</div>`;
+    return `
+      <div class="oss-item">
+        <div class="oss-item-left">
+          <div class="oss-item-name">${escapeHTML(it.nm)}</div>
+          ${varHTML}
+        </div>
+        <div class="oss-item-price">${formatPrice(it.sub)}</div>
+      </div>`;
+  }).join('');
+
+  // Totals
+  let totalsHTML = '<div class="oss-totals">';
+  if (o.discount > 0 || o.shippingCost > 0) {
+    totalsHTML += `<div class="oss-total-line"><span>Subtotal</span><span>${formatPrice(o.rawTotal)}</span></div>`;
+    if (o.discount > 0)
+      totalsHTML += `<div class="oss-total-line"><span>Diskon</span><span>−${formatPrice(o.discount)}</span></div>`;
+    if (o.shippingCost > 0)
+      totalsHTML += `<div class="oss-total-line"><span>Ongkir</span><span>${formatPrice(o.shippingCost)}</span></div>`;
+  }
+  totalsHTML += `<div class="oss-grand-total"><span>Total</span><span>${formatPrice(o.finalTotal)}</span></div>`;
+  totalsHTML += '</div>';
+  document.getElementById('ossTotals').innerHTML = totalsHTML;
+
+  document.getElementById('orderSummaryModal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function sendWhatsAppProof() {
+  if (_ossWaUrl) window.open(_ossWaUrl, '_blank');
+  closeOrderSummary();
+  showToast('Pesanan dikonfirmasi! Kirim bukti bayar via WA ya 🎉', 'success');
+}
+
+function closeOrderSummary() {
+  document.getElementById('orderSummaryModal').style.display = 'none';
+  document.body.style.overflow = '';
+  _ossWaUrl = null;
+
+  // Reset all state
+  cart = {};
+  activePromo = null;
+  _selectedShipping = null;
+  _ongkirPricing    = [];
+  products.forEach(p => {
+    if (p.variants?.length) updateVariantBadge(p.id);
+    else refreshCard(p.id);
+  });
+  syncStickyFooter();
+  document.getElementById('customerName').value = '';
+  document.getElementById('customerWA').value   = '';
+  document.getElementById('customerNote').value = '';
+  if (orderType === 'delivery') {
+    document.getElementById('customerAddress').value = '';
+    const verify = document.getElementById('addressMapsVerify');
+    if (verify) { verify.style.display = 'none'; verify.href = '#'; }
+    const locBtn = document.getElementById('btnUseLocation');
+    if (locBtn) locBtn.querySelector('.btn-loc-text').textContent = 'Gunakan Lokasi Saya';
+    _deliveryLat = null; _deliveryLng = null;
+    const ongkirBox = document.getElementById('ongkirOptions');
+    if (ongkirBox) ongkirBox.innerHTML = '';
+  }
+  document.getElementById('step3').classList.remove('active');
+  document.getElementById('step1').classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function copyOrderCode() {
+  const code = document.getElementById('ossCode').textContent;
+  const copyBtn = document.querySelector('.btn-oss-copy');
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(code).then(() => {
+      showToast('Kode pesanan disalin!', 'success');
+      if (copyBtn) { copyBtn.textContent = '✅ Disalin'; setTimeout(() => { copyBtn.textContent = '📋 Salin'; }, 2000); }
+    });
+  } else {
+    const el = document.createElement('input');
+    el.value = code;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    showToast('Kode pesanan disalin!', 'success');
   }
 }
 
