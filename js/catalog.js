@@ -961,27 +961,10 @@ function showQrisPayment() {
   const finalTotal   = cartFinalTotal();
   const orderNum     = `BRV-${Date.now().toString(36).toUpperCase().slice(-5)}`;
 
-  // Store order data for use when customer confirms
-  _qrisPendingOrder = {
-    orderNum, name, wa, note, address, addressNote,
-    rawTotal, discount, shippingCost,
-    shippingLabel: _selectedShipping?.label || null,
-    finalTotal,
-    promoCode: activePromo?.code || null,
-    cartSnapshot: Object.entries(cart).map(([, { product, qty, variantLabels, extraPrice = 0 }]) => ({
-      nm: product.name, qty, vl: variantLabels || [],
-      up: product.price + (extraPrice || 0),
-      sub: (product.price + (extraPrice || 0)) * qty,
-    })),
-    cartRef: { ...cart },
-  };
-
-  // Show amount
-  document.getElementById('qrisAmountText').textContent = formatPrice(finalTotal);
-
-  // Generate dynamic QRIS and render to canvas
+  // Generate dynamic QRIS first so we can store the string
+  let dynamicQris;
   try {
-    const dynamicQris = qrisToDynamic(QRIS_STATIC, finalTotal);
+    dynamicQris = qrisToDynamic(QRIS_STATIC, finalTotal);
     const qrEl = document.getElementById('qrisQR');
     qrEl.innerHTML = '';
     new QRCode(qrEl, {
@@ -995,6 +978,25 @@ function showQrisPayment() {
     showToast('Gagal generate QR code', 'error');
     return;
   }
+
+  // Show amount
+  document.getElementById('qrisAmountText').textContent = formatPrice(finalTotal);
+
+  // Store order data for use when customer confirms
+  _qrisPendingOrder = {
+    orderNum, name, wa, note, address, addressNote,
+    rawTotal, discount, shippingCost,
+    shippingLabel: _selectedShipping?.label || null,
+    finalTotal,
+    promoCode: activePromo?.code || null,
+    qrisString: dynamicQris,
+    cartSnapshot: Object.entries(cart).map(([, { product, qty, variantLabels, extraPrice = 0 }]) => ({
+      nm: product.name, qty, vl: variantLabels || [],
+      up: product.price + (extraPrice || 0),
+      sub: (product.price + (extraPrice || 0)) * qty,
+    })),
+    cartRef: { ...cart },
+  };
 
   const modal = document.getElementById('qrisModal');
   modal.style.display = 'flex';
@@ -1059,6 +1061,8 @@ function goBackFromQris() {
 
 // WA URL stored after order saved, used by sendWhatsAppProof()
 let _ossWaUrl = null;
+let _ossQrisString = null;
+let _ossQrisAmount = 0;
 
 async function confirmQrisPayment() {
   if (!_qrisPendingOrder) return;
@@ -1113,6 +1117,7 @@ async function confirmQrisPayment() {
       shipping_cost:    o.shippingCost || null,
       shipping_label:   o.shippingLabel || null,
       total:            o.finalTotal,
+      qris_string:      o.qrisString || null,
       status:           'pending',
     });
     if (error) throw error;
@@ -1131,6 +1136,9 @@ async function confirmQrisPayment() {
 }
 
 function showOrderSummary(o) {
+  _ossQrisString = o.qrisString || null;
+  _ossQrisAmount = o.finalTotal || 0;
+
   // Subtitle
   document.getElementById('ossSubtitle').innerHTML =
     `Pesanan <strong>#${escapeHTML(o.orderNum)}</strong> belum kami proses sampai kamu kirim <strong>foto bukti pembayaran QRIS</strong> via WhatsApp.`;
@@ -1227,10 +1235,28 @@ function sendWhatsAppProof() {
   showToast('Pesanan dikonfirmasi! Kirim bukti bayar via WA ya 🎉', 'success');
 }
 
+function reshowQris() {
+  if (!_ossQrisString) return;
+  const qrEl = document.getElementById('qrisQR');
+  qrEl.innerHTML = '';
+  new QRCode(qrEl, {
+    text: _ossQrisString,
+    width: 220, height: 220,
+    colorDark: '#1a1a1a', colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.H,
+  });
+  document.getElementById('qrisAmountText').textContent = formatPrice(_ossQrisAmount);
+  document.getElementById('orderSummaryModal').style.display = 'none';
+  document.getElementById('qrisModal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
 function closeOrderSummary() {
   document.getElementById('orderSummaryModal').style.display = 'none';
   document.body.style.overflow = '';
   _ossWaUrl = null;
+  _ossQrisString = null;
+  _ossQrisAmount = 0;
 
   // Reset all state
   cart = {};
