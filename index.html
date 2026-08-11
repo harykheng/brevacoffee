@@ -227,7 +227,7 @@
             <label for="customerAddress">Alamat Pengiriman *</label>
             <div class="address-input-wrap">
               <div class="address-autocomplete-wrap">
-                <textarea id="customerAddress" placeholder="Tulis alamat lengkap + patokan..." rows="3" oninput="onAddressInput(this)" autocomplete="off"></textarea>
+                <textarea id="customerAddress" placeholder="Tulis alamat lengkap + patokan..." rows="3" oninput="onAddressInput(this)" onblur="onAddressBlur(this)" autocomplete="off"></textarea>
                 <div id="addressSuggestions" class="address-suggestions" style="display:none"></div>
               </div>
               <button type="button" class="btn-use-location" id="btnUseLocation" onclick="useMyLocation()">
@@ -238,7 +238,7 @@
                 Verifikasi di Google Maps →
               </a>
             </div>
-            <p class="ongkir-driver-note">🛵 Ongkos kirim dibayar langsung ke driver saat pesanan tiba</p>
+            <div id="ongkirOptions"></div>
           </div>
         </div>
       </div>
@@ -263,6 +263,10 @@
         <div class="co-discount-row" id="coDiscountRow" style="display:none">
           <span class="co-total-label">🎟 Diskon</span>
           <span class="co-discount-amount" id="coDiscountAmount">−Rp 0</span>
+        </div>
+        <div class="co-shipping-row" id="coShippingRow" style="display:none">
+          <span class="co-total-label">🛵 Ongkir</span>
+          <span class="co-shipping-amount" id="coShippingAmount">Rp 0</span>
         </div>
         <div class="co-total-row">
           <span class="co-total-label">Total</span>
@@ -320,6 +324,70 @@
     </div>
   </div>
 
+  <!-- ==============================================
+       STEP 4 — QRIS PAYMENT PAGE
+       ============================================== -->
+  <div id="step4" class="step">
+    <div class="qp-page">
+
+      <!-- Back button -->
+      <button class="qp-back" onclick="goBackFromQris()" aria-label="Kembali">←</button>
+
+      <!-- Sparkle stars in the cream area -->
+      <span class="qp-star qp-star-tl">✦</span>
+      <span class="qp-star qp-star-tr">✦</span>
+      <span class="qp-star qp-star-bl">✦</span>
+      <span class="qp-star qp-star-br">✦</span>
+
+      <!-- Total amount display -->
+      <div class="qp-total-area">
+        <div class="qp-total-label">Total Pembayaran</div>
+        <div class="qp-total-amount" id="qrisAmountText">Rp 0</div>
+      </div>
+
+      <!-- Arch section: SVG curved text + brown dome -->
+      <div class="qp-arch-section">
+
+        <!-- Curved "SCAN HERE" SVG text over the dome -->
+        <svg class="qp-scan-svg" viewBox="0 0 360 160" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <path id="scanArcPath" d="M 0,120 A 180,90 0 0,1 360,120"/>
+          </defs>
+          <text class="qp-scan-text">
+            <textPath href="#scanArcPath" startOffset="50%" text-anchor="middle">SCAN HERE</textPath>
+          </text>
+        </svg>
+
+        <!-- Decorative chevron shapes on arch sides -->
+        <div class="qp-deco-left" aria-hidden="true"></div>
+        <div class="qp-deco-right" aria-hidden="true"></div>
+
+        <!-- Brown arch dome -->
+        <div class="qp-arch">
+          <p class="qp-arch-subtitle">For Payment</p>
+
+          <!-- QR code frame with corner-bracket viewfinder -->
+          <div class="qp-qr-frame">
+            <div class="qp-corner qp-corner-tl"></div>
+            <div class="qp-corner qp-corner-tr"></div>
+            <div class="qp-corner qp-corner-bl"></div>
+            <div class="qp-corner qp-corner-br"></div>
+            <div id="qrisQR"></div>
+          </div>
+
+          <p class="qp-hint">Scan dengan aplikasi bank atau e-wallet kamu</p>
+
+          <div class="qp-cafe-name">Breva Cafe</div>
+
+          <button class="btn-qp-confirm" id="btnQrisConfirm" onclick="confirmQrisPayment()">
+            Konfirmasi Pesanan
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
   <!-- VARIANT SELECTION SHEET -->
   <div class="variant-overlay" id="variantOverlay" onclick="closeVariantSheet()">
     <div class="variant-sheet" id="variantSheet" onclick="event.stopPropagation()">
@@ -361,24 +429,50 @@
   <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
   <!-- SCRIPTS -->
-  <!-- QRIS Payment Modal -->
-  <div class="qris-overlay" id="qrisModal" style="display:none" role="dialog" aria-label="Pembayaran QRIS">
-    <div class="qris-box">
-      <button class="qris-close" onclick="closeQrisModal()" aria-label="Tutup">✕</button>
-      <div class="qris-header">
-        <span class="qris-logo">⬛ QRIS</span>
-        <span class="qris-title">Scan &amp; Bayar</span>
+
+  <!-- ORDER SUMMARY MODAL (shown after QRIS confirm) -->
+  <div class="oss-overlay" id="orderSummaryModal" style="display:none" role="dialog" aria-label="Ringkasan Pesanan">
+    <div class="oss-scroll">
+
+      <div class="oss-topbar">
+        <button class="oss-close" onclick="closeOrderSummary()" aria-label="Tutup">✕</button>
       </div>
-      <div class="qris-total-row">
-        Total: <strong id="qrisAmountText">Rp 0</strong>
+
+      <div class="oss-header">
+        <h2 class="oss-title">Satu langkah lagi!</h2>
+        <p class="oss-subtitle" id="ossSubtitle"></p>
       </div>
-      <div class="qris-canvas-wrap">
-        <div id="qrisQR"></div>
+
+      <div class="oss-warning">
+        <span>⚠️</span> WAJIB — KIRIM FOTO BUKTI PEMBAYARAN
       </div>
-      <p class="qris-hint">Scan dengan aplikasi bank atau e-wallet kamu</p>
-      <button class="btn-qris-confirm" id="btnQrisConfirm" onclick="confirmQrisPayment()">
-        ✅ Sudah Bayar — Konfirmasi via WhatsApp
+
+      <button class="btn-oss-wa" onclick="sendWhatsAppProof()">
+        💬 Kirim Bukti Transfer via WhatsApp
       </button>
+
+      <!-- Kode pesanan -->
+      <div class="oss-card">
+        <div class="oss-card-label">KODE PESANAN</div>
+        <div class="oss-code-row">
+          <div class="oss-code" id="ossCode">-</div>
+          <button class="btn-oss-copy" onclick="copyOrderCode()">📋 Salin</button>
+        </div>
+      </div>
+
+      <!-- Pengiriman (delivery only) -->
+      <div class="oss-section" id="ossDeliverySection" style="display:none">
+        <div class="oss-section-header"><span>🛵</span> PENGIRIMAN</div>
+        <div id="ossDeliveryRows"></div>
+      </div>
+
+      <!-- Daftar pesanan -->
+      <div class="oss-section">
+        <div class="oss-section-header"><span>📦</span> PESANAN</div>
+        <div id="ossItems"></div>
+        <div id="ossTotals"></div>
+      </div>
+
     </div>
   </div>
 
