@@ -1,6 +1,6 @@
 # Breva Coffee — Setup Guide
 
-Website e-commerce untuk brand kopi Breva. Stack: **React + Vite**, Supabase (database + auth + storage), deploy ke Vercel/Netlify. Hampir semua logic (QRIS, promo, dsb) jalan di browser tanpa backend server — satu-satunya pengecualian adalah cek ongkir real-time, yang lewat 1 Supabase Edge Function kecil karena butuh menyembunyikan API key Biteship.
+Website e-commerce untuk brand kopi Breva. Stack: **React + Vite**, Supabase (database + auth + storage), deploy ke Vercel/Netlify/Cloudflare — project ini sendiri jalan di **Cloudflare** (Workers, static assets lewat `wrangler.jsonc`). Hampir semua logic (QRIS, promo, dsb) jalan di browser tanpa backend server — satu-satunya pengecualian adalah cek ongkir real-time, yang lewat 1 Supabase Edge Function kecil karena butuh menyembunyikan API key Biteship.
 
 Dua aplikasi React terpisah dalam satu repo (Vite multi-page app): katalog customer di `/`, dashboard admin di `/admin/`. Masing-masing punya bundle sendiri — customer tidak pernah men-download kode dashboard admin dan sebaliknya.
 
@@ -246,6 +246,8 @@ Fitur cek ongkir GoSend/GrabExpress pakai [Biteship](https://biteship.com). Berb
 1. Daftar/login ke [dashboard.biteship.com](https://dashboard.biteship.com/integrations)
 2. Ambil **Auth Token** (diawali `biteship_test_...` untuk testing atau `biteship_live_...` untuk production)
 
+> ⚠️ **Waspada saat paste key ini** (baik di `supabase secrets set` maupun di textarea "Manage secrets" dashboard Supabase) — copy-paste dari sumber tertentu (terutama dari PDF/dokumen atau textarea lain) bisa menyisipkan karakter newline literal di tengah key tanpa terlihat. Efeknya: Edge Function jalan tapi selalu gagal dengan `TypeError: Invalid header value` (bukan 401/403, tapi error waktu bikin HTTP header-nya). Ciri-cirinya di textarea dashboard: teks wrap di titik yang aneh/konsisten terlalu awal, beda dari word-wrap alami yang ngikutin lebar textarea. Kalau ragu, hapus lalu retype manual, atau cek panjang string-nya persis sama dengan yang di-copy.
+
 ### Deploy Edge Function
 Butuh [Supabase CLI](https://supabase.com/docs/guides/cli) terinstall (`npm install -g supabase`):
 
@@ -382,7 +384,31 @@ Contoh: `08123456789` → tulis `628123456789`
 
 ---
 
-## 8. Catatan Keamanan
+## 8. Troubleshooting
+
+Masalah-masalah yang pernah muncul waktu deploy project ini, dan cara fix-nya:
+
+**"The version of Vite used in the project (X.X.X) cannot be automatically configured. Please update the Vite version to at least 6.0.0"** (saat deploy ke Cloudflare)
+Cloudflare butuh Vite ≥6 supaya bisa auto-detect config project. Project ini sudah pakai Vite 8 (`package.json`) — kalau muncul lagi berarti ada downgrade tidak sengaja, jalankan `npm install vite@latest @vitejs/plugin-react@latest` lalu `npm run build` untuk verifikasi.
+
+**"[ERROR] Error parsing file: .../vite.config.js"** (saat deploy ke Cloudflare)
+Terjadi kalau Cloudflare project dibuat lewat alur **Workers** (bukan Pages) — Wrangler otomatis coba parse `vite.config.js` untuk deteksi config, dan gagal karena config multi-entry (customer + admin) di project ini tidak dikenali sama plugin Vite-nya Wrangler. Sudah di-fix permanen lewat `wrangler.jsonc` di root repo yang mendeklarasikan deploy sebagai static-assets-only (lihat §4) — Wrangler jadi skip parsing `vite.config.js` sama sekali. Kalau error ini muncul lagi, cek `wrangler.jsonc` masih ada dan isinya masih `assets.directory: "./dist"`.
+
+**"supabaseUrl is required"** (blank page setelah deploy)
+Env var `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` belum diisi di platform hosting (Vercel/Netlify/Cloudflare Environment Variables). Ingat: Vite meng-inline semua `VITE_*` ke bundle **saat build**, bukan saat runtime — jadi setelah menambah/mengubah env var, harus **trigger rebuild/redeploy**, restart server saja tidak cukup.
+
+**Logo brand tampil kegedean di header**
+Kalau custom logo (`logo_url` dari tab Pengaturan) dipasang tapi CSS class `brand-icon-logo` ketinggalan dari `className` elemen `<img>`-nya, logo cuma kena style default (`object-fit` dsb tidak ke-apply) jadi tampil raw-size. Class ini wajib ada berbarengan dengan class icon-nya (`ob-brand-icon brand-icon-logo` di `OrderTypeStep.jsx`, `topbar-icon brand-icon-logo` di `CatalogStep.jsx`) — kalau nambah tempat baru yang bisa nampilin logo custom, jangan lupa pasang keduanya.
+
+**Edge Function `check-shipping` gagal dengan `TypeError: Invalid header value: "biteship_test...\neyJ..."`**
+Ada newline literal ke-paste di tengah secret `BITESHIP_API_KEY` — lihat catatan lengkap di §3.
+
+**`401 Unauthorized` / `new row violates row-level security policy for table "orders"` saat konfirmasi pesanan**
+RLS policy `"Public insert orders"` untuk role `anon` belum ada di database live (drift dari skema kanonik) — lihat catatan lengkap + query diagnostik di §9 bagian Catatan Keamanan di bawah.
+
+---
+
+## 9. Catatan Keamanan
 
 - Supabase URL dan anon key masuk ke bundle JS lewat `VITE_*` env var — ini **normal** untuk static site (Vite meng-inline nilai `VITE_*` ke kode saat build, jadi tetap terlihat di browser walau sumbernya `.env`). Anon key hanya boleh baca data publik.
 - Row Level Security (RLS) memastikan:
@@ -393,3 +419,8 @@ Contoh: `08123456789` → tulis `628123456789`
 - LocationIQ API key di kode frontend juga normal (tier gratis, dipakai untuk autocomplete alamat saja) — kalau mau lebih aman, batasi domain yang boleh pakai key tersebut di dashboard LocationIQ.
 - **Biteship API key BEDA** — ini secret dan tidak punya mekanisme pembatasan domain. **Jangan pernah** taruh di `.env` (yang bisa masuk ke bundle frontend). Selalu lewat Edge Function `check-shipping` yang menyimpannya sebagai Supabase secret (server-side only, tidak pernah dikirim ke browser) — kode React tidak punya jalur lain untuk manggil Biteship.
 - Jangan pernah taruh **Service Role key** Supabase di kode frontend.
+- **Policy RLS live di Supabase bisa "drift" dari SQL kanonik di README ini** — SQL di §1 adalah skema yang *seharusnya* ada, tapi kalau ada perubahan manual lewat dashboard/SQL editor yang tidak balik disinkronkan ke README, project lama bisa berakhir dengan policy yang berbeda dari dokumentasi (misalnya pernah kejadian: tabel `orders` di production cuma punya policy admin, **tanpa** `"Public insert orders"`, sehingga semua percobaan checkout customer gagal dengan error `42501 new row violates row-level security policy`). Kalau curiga ada drift, cek langsung yang live:
+  ```sql
+  SELECT policyname, cmd, roles FROM pg_policies WHERE tablename = 'orders';
+  ```
+  Bandingkan hasilnya dengan `CREATE POLICY` di §1 — kalau ada yang hilang, tinggal jalankan ulang statement yang bersangkutan (aman, tidak menghapus data).
