@@ -708,7 +708,8 @@ function selectAddressSuggestion(index) {
   _deliveryLng     = parseFloat(r.lon);
   hideAddressSuggestions();
   textarea.focus();
-  autoCalcShipping();
+  // Ongkir baru dicek sekali pas klik "Simpan" (lihat saveProfile), bukan di sini —
+  // supaya nggak hit Biteship berkali-kali tiap ganti pilihan alamat.
 }
 
 function hideAddressSuggestions() {
@@ -720,14 +721,13 @@ document.addEventListener('click', (e) => {
   if (!e.target.closest('.address-autocomplete-wrap')) hideAddressSuggestions();
 });
 
-async function onAddressBlur(textarea) {
-  const q = textarea.value.trim();
+// Resolve _deliveryLat/_deliveryLng buat alamat yang diketik manual (tanpa pilih
+// dari list autocomplete). Dipanggil pas blur (pre-warm) dan sekali lagi sebagai
+// jaring pengaman di saveProfile() sebelum cek ongkir — TIDAK memanggil
+// autoCalcShipping() di sini, itu cuma dipanggil sekali pas klik "Simpan".
+async function resolveDeliveryCoords(q) {
+  if (_deliveryLat && _deliveryLng) return;
   if (!q || q.length < 5) return;
-  if (_deliveryLat && _deliveryLng) {
-    autoCalcShipping();
-    return;
-  }
-  // Geocode manually-typed address via LocationIQ
   try {
     const url  = `https://api.locationiq.com/v1/search?key=${LOCATIONIQ_KEY}&q=${encodeURIComponent(q)}&limit=1&format=json&countrycodes=id&accept-language=id`;
     const res  = await fetch(url);
@@ -736,8 +736,11 @@ async function onAddressBlur(textarea) {
     if (!data?.length) return;
     _deliveryLat = parseFloat(data[0].lat);
     _deliveryLng = parseFloat(data[0].lon);
-    autoCalcShipping();
   } catch { /* silent — user can still proceed without ongkir */ }
+}
+
+async function onAddressBlur(textarea) {
+  await resolveDeliveryCoords(textarea.value.trim());
 }
 
 // ================================================================
@@ -1118,20 +1121,32 @@ function closeProfileModal() {
   document.body.style.overflow = '';
 }
 
-function saveProfile() {
+async function saveProfile() {
   const name = document.getElementById('customerName').value.trim();
   const wa   = document.getElementById('customerWA').value.trim();
   if (!name) { showToast('Nama wajib diisi!', 'error'); document.getElementById('customerName').focus(); return; }
   if (!wa)   { showToast('Nomor WhatsApp wajib diisi!', 'error'); document.getElementById('customerWA').focus(); return; }
+
+  let addr = '';
   if (orderType === 'delivery') {
-    const addr = document.getElementById('customerAddress').value.trim();
+    addr = document.getElementById('customerAddress').value.trim();
     if (!addr) { showToast('Alamat pengiriman wajib diisi!', 'error'); document.getElementById('customerAddress').focus(); return; }
   }
+
+  const btn = document.getElementById('btnSaveProfile');
+
+  if (orderType === 'delivery') {
+    btn.disabled    = true;
+    btn.textContent = 'Mengecek ongkir…';
+    await resolveDeliveryCoords(addr); // jaring pengaman kalau blur belum sempat resolve
+    await autoCalcShipping();          // satu-satunya tempat ongkir dicek
+    btn.disabled    = false;
+    btn.textContent = 'Simpan';
+  }
+
   const card = document.getElementById('profileCard');
   document.getElementById('profileCardName').textContent = name;
-  const addrSnippet = orderType === 'delivery'
-    ? ' · ' + document.getElementById('customerAddress').value.trim().split(',')[0]
-    : '';
+  const addrSnippet = orderType === 'delivery' ? ' · ' + addr.split(',')[0] : '';
   document.getElementById('profileCardSub').textContent = wa + addrSnippet;
   card.classList.add('is-filled');
   closeProfileModal();
