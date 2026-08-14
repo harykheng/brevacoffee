@@ -22,9 +22,32 @@ Dua aplikasi React terpisah dalam satu repo (Vite multi-page app): katalog custo
 2. Isi nama project, database password, pilih region terdekat (Singapore)
 3. Tunggu project selesai dibuat (~2 menit)
 
-### Buat Tabel
+### Buat Tabel — via Supabase CLI (disarankan)
 
-Di sidebar Supabase, buka **SQL Editor** → klik **New Query**, paste SQL di bawah ini satu per satu (atau sekaligus) lalu klik **Run**.
+Skema lengkap (semua tabel + RLS + storage bucket) sudah ditulis sebagai migration files di `supabase/migrations/`, jadi tidak perlu copy-paste SQL manual satu-satu. Ini juga cara paling aman untuk hindari [RLS drift](#9-catatan-keamanan) — migration files ini adalah satu-satunya sumber kebenaran skema, jadi project baru dari template ini otomatis dapat semua policy yang benar dari awal.
+
+```bash
+npm install -g supabase          # kalau belum ada Supabase CLI
+supabase login
+supabase link --project-ref XXXXXXXXXXXXXXXX   # project ref dari Supabase Dashboard URL
+supabase db push                                # jalankan semua migration ke project
+```
+
+Urutan migration (lihat isi lengkapnya di `supabase/migrations/`):
+
+| File | Isi |
+|---|---|
+| `..._products.sql` | Tabel `products` + RLS |
+| `..._promo_codes.sql` | Tabel `promo_codes` + RLS |
+| `..._settings.sql` | Tabel `settings` + RLS |
+| `..._orders.sql` | Tabel `orders` + RLS (termasuk `"Public insert orders"` untuk `anon` — policy yang paling sering ke-skip kalau setup manual) |
+| `..._storage_product_images.sql` | Bucket `product-images` (public) + policy upload/delete |
+
+Kalau nanti nambah/ubah skema, tambahkan migration file baru (`supabase migration new <nama>`) alih-alih edit migration lama — migration lama sudah "history", jangan diubah setelah pernah di-push ke project manapun.
+
+### Buat Tabel — manual via SQL Editor (alternatif)
+
+Kalau tidak mau install Supabase CLI, isi tabel yang sama bisa dijalankan manual: di sidebar Supabase, buka **SQL Editor** → klik **New Query**, paste SQL di bawah ini satu per satu (atau sekaligus) lalu klik **Run**. Ini persis isi yang sama dengan migration files di atas, cuma ditempel di sini biar gampang di-copy tanpa CLI.
 
 #### `products` — Daftar produk
 
@@ -158,6 +181,8 @@ CREATE POLICY "Admin full access orders"
 > `qris_string` menyimpan QRIS dinamis (hasil generate dari QRIS statis toko + nominal) supaya admin/customer bisa menampilkan ulang QR-nya kapan saja lewat tombol "Tampilkan QR lagi" — ini bukan kredensial rahasia, aman disimpan apa adanya.
 
 ### Buat Storage Bucket untuk Foto
+
+> Sudah otomatis kebuat kalau kamu pakai `supabase db push` di atas (migration `..._storage_product_images.sql`) — bagian ini cuma untuk yang setup manual.
 
 1. Di sidebar Supabase, buka **Storage** → **New bucket**
 2. Nama bucket: `product-images`

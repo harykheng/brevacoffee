@@ -1,0 +1,4 @@
+# Identitas project lokal untuk Supabase CLI (supabase link / db push).
+# Nilai ini cuma label lokal, bukan project ref — project ref sebenarnya
+# ditentukan saat `supabase link --project-ref <ref-dari-dashboard>`.
+project_id = "breva-coffee"
