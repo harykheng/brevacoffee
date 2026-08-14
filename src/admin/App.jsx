@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { AuthProvider, useAuth } from './AuthContext.jsx';
 import { ConfirmDialogProvider } from '../shared/components/ConfirmDialog.jsx';
 import LoginScreen from './components/LoginScreen.jsx';
+import DashboardTab from './components/DashboardTab.jsx';
 import ProductsTab from './components/ProductsTab.jsx';
 import PromoTab from './components/PromoTab.jsx';
 import OrdersTab from './components/OrdersTab.jsx';
 import SettingsTab from './components/SettingsTab.jsx';
 
 const TABS = [
+  { key: 'dashboard', label: '📊 Dashboard' },
   { key: 'products', label: '🛍 Produk' },
   { key: 'promo', label: '🎟 Promo' },
   { key: 'orders', label: '📦 Pesanan' },
@@ -16,7 +18,7 @@ const TABS = [
 
 function Dashboard() {
   const { session, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('products');
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   return (
     <div className="admin-layout active">
@@ -44,6 +46,9 @@ function Dashboard() {
           ))}
         </div>
 
+        <div id="tab-dashboard" className="tab-panel" style={{ display: activeTab === 'dashboard' ? '' : 'none' }}>
+          {activeTab === 'dashboard' && <DashboardTab />}
+        </div>
         <div id="tab-products" className="tab-panel" style={{ display: activeTab === 'products' ? '' : 'none' }}>
           {activeTab === 'products' && <ProductsTab />}
         </div>

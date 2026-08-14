@@ -21,8 +21,9 @@ Repo ini dulu vanilla HTML/CSS/JS (lihat git history sebelum commit rewrite Reac
 | `src/shared/components/` | `Modal.jsx` (shell generik modal admin), `Toast.jsx` (+ `useToast()`), `ConfirmDialog.jsx` (+ `useConfirmDialog()`) |
 | `css/main.css` / `catalog.css` / `admin.css` | Style — **tidak diubah dari versi vanilla**, di-import apa adanya sebagai global stylesheet, semua class name sama persis |
 | `supabase/functions/check-shipping/index.ts` | Edge Function (Deno) — proxy ke Biteship Rates API, satu-satunya kode yang jalan di server bukan browser |
+| `wrangler.jsonc` | Config Cloudflare — deklarasi deploy static-assets-only (`assets.directory: "./dist"`, tanpa Worker script). Lihat "Kenapa begini" untuk alasannya. |
 
-Build via Vite (`npm run dev` / `npm run build`) — beda dari versi vanilla dulu yang tanpa build step sama sekali.
+Build via Vite (`npm run dev` / `npm run build`) — beda dari versi vanilla dulu yang tanpa build step sama sekali. Live deploy project ini ada di **Cloudflare** — detail troubleshooting deploy (Vite version, Workers vs Pages, env var) ada di README §8.
 
 ---
 
@@ -44,6 +45,7 @@ Pilih pickup/delivery + tanggal (chip 7 hari dari `buildDateChips()` di `shared/
 - **Ongkir**: `useShipping().calculate(lat, lng, weightGrams, orderValue)` dipanggil **cuma sekali**, dari handler save di `ProfileModal.jsx` — bukan dari `useEffect` yang watch perubahan alamat (itu justru bug yang mau dihindari, lihat "Kenapa begini" di bawah). Hasilnya dispatch ke `CartContext` (`SET_SHIPPING_OPTIONS`/`SET_SHIPPING_STATIC`/`SET_SHIPPING_UNAVAILABLE`), ditampilkan `OngkirOptions.jsx` yang render di `CheckoutStep` (bukan di dalam modal profil).
   - `useShipping.js` cuma punya SATU jalur: `checkBiteshipRatesViaEdgeFunction()` → `supabase.functions.invoke('check-shipping')`. Tidak ada jalur "panggil Biteship langsung dari browser" di kode React ini sama sekali (versi vanilla sempat punya jalur testing seperti itu, sengaja tidak diikutkan saat rewrite).
   - **Fallback**: kalau Edge Function gagal/error/kosong, otomatis `haversineDistance()` + `calcShippingRate(km)` dari `shared/lib/shipping.js` (≤3km=Rp8rb, ≤6km=Rp15rb, ≤10km=Rp22rb, >10km=`SET_SHIPPING_UNAVAILABLE`).
+  - **Loading state**: selama `calculate()` berjalan, `ProfileModal.jsx` set `saving=true` yang me-render `ShippingLoadingOverlay.jsx` — overlay full-screen (scooter + cangkir kopi animasi CSS) via `createPortal` ke `document.body` (bukan nested di dalam `.profile-overlay`, supaya klik di overlay tidak ke-bubble ke handler `onClose` backdrop modal profil). Style-nya di `css/catalog.css` bagian `SHIPPING LOADING OVERLAY`.
 - **Promo**: `fetchActivePromoByCode()` (`shared/lib/promos.js`) query `promo_codes` by `code` + `is_active=true`, cek `min_order`. Hasil dispatch `APPLY_PROMO`.
 
 ### Pembayaran QRIS — `QrisModal.jsx`
@@ -62,6 +64,9 @@ Pilih pickup/delivery + tanggal (chip 7 hari dari `buildDateChips()` di `shared/
 ## Alur Admin (`src/admin/`)
 
 `AuthContext.jsx` wrap Supabase Auth session (`supabase.auth.getSession()` + `onAuthStateChange`). `App.jsx` render `LoginScreen` kalau `session` null, `Dashboard` kalau ada session — hanya user yang dibuat manual di Supabase Dashboard yang bisa masuk (lihat README §1 "Buat Akun Admin").
+
+### Tab Dashboard — `DashboardTab.jsx`
+Tab default saat login. Semua angka dihitung client-side di `useMemo` dari `useOrders()` (tidak ada tabel/agregasi baru di Supabase) — status `pending`/`confirmed`/`done` dihitung sebagai "revenue", `cancelled` dikecualikan. Kartu: pendapatan/pesanan/item terjual hari ini, omset bulan berjalan. Chart batang 7 hari terakhir dan daftar produk terlaris bulan ini dibangun pure CSS/JS (tanpa charting library, konsisten dengan prinsip "no new deps kalau bisa dihindari") — data qty/revenue per produk diambil dari field `nm`/`qty`/`sub` di `orders.items` (shape yang sama dipakai `cartSnapshot()`, lihat `shared/lib/cart.js`).
 
 ### Tab Produk — `ProductsTab.jsx` + `ProductFormModal.jsx`
 CRUD ke tabel `products` lewat `saveProduct()`/`deleteProduct()` (`shared/lib/products.js`, termasuk upload foto ke bucket `product-images`). Varian dikelola sebagai array-of-objects local state (`variantGroups`) di form, diserialize ke JSON pas submit — beda dari versi vanilla yang scrape dari DOM langsung, tapi hasil akhirnya (shape JSON di kolom `variants`) sama persis.
@@ -96,3 +101,7 @@ Form yang upsert ke tabel `settings` (row `id=1`) lewat `saveSettings()` (`share
 - **QRIS statis → dinamis dilakukan di browser**, bukan lewat payment gateway (Midtrans/Xendit dkk) — supaya tidak ada biaya transaksi. Trade-off: tidak ada konfirmasi pembayaran otomatis, admin harus verifikasi manual dari bukti transfer yang dikirim via WA.
 - **Ongkir kalkulasi ditaruh di luar modal profil** (bukan di dalamnya) — permintaan eksplisit supaya customer tetap lihat estimasi ongkir sambil isi data di halaman utama, modal profil murni untuk data diri + alamat.
 - **`orders` RLS insert-only untuk anon** — customer tidak pernah butuh SELECT dari tabel ini (semua state pesanan di-track di React state sampai konfirmasi), jadi tidak dibuka read access sama sekali demi privasi data pelanggan lain.
+- **Vite 8 wajib** (bukan Vite 5 dari scaffold awal) — Cloudflare's Workers deploy flow butuh Vite ≥6 supaya bisa auto-configure project; di-upgrade pertengahan sesi rewrite (`vite` 5.4.21→8.2.1, `@vitejs/plugin-react` 4.3.2→6.0.5), termasuk ganti `__dirname` jadi `import.meta.dirname` di `vite.config.js` (deprecation di Vite 8).
+- **`wrangler.jsonc` ada karena Cloudflare dashboard sekarang default ke alur "Workers"**, bukan lagi form "Pages" terpisah — alur Workers otomatis coba parse `vite.config.js` buat auto-detect config, dan gagal karena config multi-entry (customer+admin) project ini tidak dikenali plugin Vite Wrangler. `wrangler.jsonc` mendeklarasikan deploy sebagai static-assets-only (`assets.directory: "./dist"`, tanpa Worker script), supaya Wrangler skip parsing `vite.config.js` sama sekali. Kalau nanti Cloudflare balikin alur Pages klasik, file ini masih aman dibiarkan (opsional, tapi tidak mengganggu).
+- **Skema RLS kanonik di README bisa drift dari yang live di Supabase** — pernah kejadian tabel `orders` di production cuma punya policy admin (ALL), **tanpa** `"Public insert orders"` untuk `anon`, jadi semua checkout customer gagal `42501 new row violates row-level security policy` meskipun kode frontend dan `.env` sudah benar. Kalau ada laporan bug "gagal insert"/"401" yang tidak masuk akal dari sisi kode, curigai dulu RLS drift — diagnosis lewat `SELECT policyname, cmd, roles FROM pg_policies WHERE tablename = '<table>';` di SQL Editor, bandingkan ke `CREATE POLICY` canonical di README §1, baru simpulkan itu bug kode atau schema yang belum disinkron.
+- **Paste secret (Biteship key, dsb) ke textarea dashboard bisa menyisipkan newline literal tanpa terlihat** — gejalanya Edge Function selalu gagal dengan `TypeError: Invalid header value`, bukan error auth biasa. Kalau debug Edge Function/API key issue, ini salah satu hal pertama yang perlu dicurigai sebelum menduga kodenya salah.

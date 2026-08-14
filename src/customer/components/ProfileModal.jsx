@@ -6,6 +6,7 @@ import { useBodyScrollLock } from '../../shared/hooks/useBodyScrollLock.js';
 import { config } from '../../shared/lib/config.js';
 import { cartCount, cartTotal } from '../../shared/lib/cart.js';
 import AddressAutocomplete from './AddressAutocomplete.jsx';
+import ShippingLoadingOverlay from './ShippingLoadingOverlay.jsx';
 
 export default function ProfileModal({ isOpen, onClose }) {
   const { state, dispatch } = useCart();
@@ -120,6 +121,7 @@ export default function ProfileModal({ isOpen, onClose }) {
           </button>
         </div>
       </div>
+      <ShippingLoadingOverlay show={saving} />
     </div>
   );
 }
