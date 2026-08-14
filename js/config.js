@@ -36,6 +36,12 @@ const AWS_PLACES_REGION  = 'ap-southeast-1';
 const STORE_LAT = -6.2308;
 const STORE_LNG = 106.6480;
 
+// Ongkir real-time via Biteship (GoSend/GrabExpress) — dipanggil lewat
+// Supabase Edge Function "check-shipping" (API key Biteship TIDAK ditaruh di sini,
+// key-nya secret & tersimpan di Supabase secrets, bukan di kode frontend).
+// Berat per pesanan dipakai buat estimasi tarif kurir (produk tidak per-item nimbang gram).
+const DEFAULT_ITEM_WEIGHT_G = 300;
+
 // QRIS statis merchant (dari bank/GoPay/OVO — ganti dengan QRIS Breva Coffee asli)
 const QRIS_STATIC = '00020101021126610014COM.GO-JEK.WWW01189360091432449962000210G2449962000303UMI51440014ID.CO.QRIS.WWW0215ID10243329840860303UMI5204597753033605802ID5925Oraiste Beauty House, BTC6014KOTA TANGERANG61051512262070703A0163049B66';
 

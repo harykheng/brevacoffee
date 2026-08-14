@@ -1,6 +1,6 @@
 # Breva Coffee — Project Context
 
-Website pemesanan kopi untuk UMKM. **Vanilla HTML/CSS/JS, tanpa framework, tanpa backend server.** Supabase dipakai sebagai database + auth + storage; semua logic bisnis (ongkir, QRIS, validasi promo) jalan di browser. Tujuan desain: biaya operasional sekecil mungkin (tidak ada API berbayar wajib) supaya cocok untuk skala UMKM.
+Website pemesanan kopi untuk UMKM. **Vanilla HTML/CSS/JS, tanpa framework.** Supabase dipakai sebagai database + auth + storage; hampir semua logic bisnis (QRIS, validasi promo) jalan di browser. Satu pengecualian: cek ongkir real-time (Biteship) lewat 1 Supabase Edge Function kecil, karena API key Biteship secret dan tidak boleh nempel di frontend — lihat bagian "Ongkir" di bawah. Tujuan desain: biaya operasional sekecil mungkin supaya cocok untuk skala UMKM.
 
 Untuk setup/deploy/schema SQL, lihat `README.md`. File ini fokus menjelaskan **cara kerja tiap fitur** dan **di mana letak kodenya**, supaya sesi berikutnya tidak perlu re-explore dari nol.
 
@@ -18,6 +18,7 @@ Untuk setup/deploy/schema SQL, lihat `README.md`. File ini fokus menjelaskan **c
 | `css/main.css` | Style bersama (variabel warna, font, modal generik) |
 | `css/catalog.css` | Style khusus halaman katalog/checkout/QRIS/profile sheet |
 | `css/admin.css` | Style khusus dashboard admin |
+| `supabase/functions/check-shipping/index.ts` | Edge Function (Deno) — proxy ke Biteship Rates API, satu-satunya kode yang jalan di server bukan browser |
 
 Tidak ada build step — edit langsung, refresh browser.
 
@@ -37,10 +38,9 @@ Tidak ada build step — edit langsung, refresh browser.
 ### Step 3 — Checkout (`renderCheckoutStep`)
 - **Kartu Profil** (`profileCard`): tap untuk buka bottom sheet (`openProfileModal`) berisi nama, WA, dan — kalau delivery — alamat + catatan alamat. Disimpan ke UI state via `saveProfile()` (tidak langsung ke DB, baru di-submit saat checkout).
 - **Alamat**: autocomplete pakai GrabMaps lewat Amazon Location Service Places API v2 (`onAddressInput` → debounce → `fetchAddressSuggestions` → `searchPlacesText` POST ke `/v2/search-text` → `renderAddressSuggestions`). Pilih saran → `selectAddressSuggestion` set `_deliveryLat`/`_deliveryLng` dari `Position` (`[lng, lat]`, urutan kebalik dari lat/lng biasa) dan trigger `autoCalcShipping()`. Auth pakai API key yang dibatasi "Allowed referrers" ke domain sendiri di AWS console (bukan Cognito) — jadi aman ditaruh langsung di `config.js` tanpa proxy backend.
-- **Ongkir**: dihitung **tanpa API**, murni matematis:
-  - `haversineDistance()` — jarak garis lurus toko ↔ alamat customer (pakai `STORE_LAT`/`STORE_LNG` dari config).
-  - `calcShippingRate(km)` — tarif flat per tier jarak: ≤3km = Rp8.000, ≤6km = Rp15.000, ≤10km = Rp22.000, >10km = di luar jangkauan (ongkir `null`, tombol checkout diblokir).
-  - Ditampilkan di `#ongkirOptions` pada halaman utama (**bukan** di dalam modal profil — keputusan desain eksplisit supaya kalkulasi ongkir tetap terlihat saat customer isi form).
+- **Ongkir**: `autoCalcShipping()` (async) memanggil Edge Function `check-shipping` via `supabaseClient.functions.invoke()`, kirim koordinat asal/tujuan + estimasi berat (`cartCount() * DEFAULT_ITEM_WEIGHT_G`) + nilai pesanan. Edge Function proxy ke Biteship Rates API (`POST /v1/rates/couriers`, courier `gosend,grab`) pakai `BITESHIP_API_KEY` yang tersimpan sebagai Supabase secret (tidak pernah ke browser). Hasil beberapa opsi kurir ditampilkan sebagai list yang bisa dipilih (`renderOngkirOptions` → `selectOngkirOption`).
+  - **Fallback**: kalau Edge Function gagal/error/kosong (Biteship down, area tidak ter-cover kurir, dsb), otomatis jatuh ke `renderStaticFallbackShipping()` — tarif flat berbasis jarak garis lurus (`haversineDistance()` + `calcShippingRate(km)`: ≤3km=Rp8rb, ≤6km=Rp15rb, ≤10km=Rp22rb, >10km=di luar jangkauan). Ini bukan sekadar cadangan teori — checkout tidak boleh macet total kalau API pihak ketiga bermasalah.
+  - Ditampilkan di `#ongkirOptions` pada halaman utama (**bukan** di dalam modal profil — keputusan desain eksplisit supaya estimasi ongkir tetap terlihat saat customer isi form).
 - **Promo**: `validatePromoCode()` query `promo_codes` by `code` + `is_active = true`, cek `min_order`. Hasil disimpan di `activePromo`.
 - **Totals**: `cartTotal()` → `getDiscountAmount()` → `cartFinalTotal()` (sudah termasuk ongkir kalau delivery).
 
@@ -96,8 +96,8 @@ Form tunggal yang upsert ke tabel `settings` (row `id = 1`): nama/ikon/logo bran
 
 ## Keputusan Desain / "Kenapa begini"
 
-- **Tidak ada backend server.** Semua kalkulasi (ongkir, QRIS) sengaja dibuat client-side supaya tidak ada biaya API per-transaksi. Konsekuensi: kalau nanti mau integrasi API berbayar yang butuh secret key (mis. Biteship untuk ongkir real, payment gateway resmi), **wajib** tambah proxy layer (Supabase Edge Function) — jangan taruh secret key di JS frontend.
-- **Ongkir = Haversine + tarif flat per tier**, bukan API. Sengaja, karena toko hanya melayani radius terbatas (≤10km) dan tidak butuh akurasi rute jalan sungguhan.
+- **Client-side by default, backend hanya kalau benar-benar wajib.** QRIS dan promo sengaja dibuat client-side supaya tidak ada biaya API per-transaksi. Ongkir jadi pengecualian: Biteship butuh secret key yang tidak bisa dibatasi per-domain kayak AWS Places key, jadi **wajib** proxy — itu satu-satunya alasan Edge Function `check-shipping` ada. Kalau nanti ada integrasi lain yang juga butuh secret key (mis. payment gateway resmi), pola yang sama (Edge Function proxy) yang dipakai — jangan taruh secret key di JS frontend.
+- **Ongkir dicoba Biteship dulu (real-time, akurat per kurir), baru fallback ke Haversine + tarif flat per tier** kalau Biteship gagal. Percobaan integrasi Biteship yang lebih awal (lihat git history) sempat dua kali direvert karena API key-nya ditaruh langsung di `config.js` — pola itu tidak dipakai lagi di versi sekarang.
 - **Maps hanya link share statis** (`STORE_MAPS_URL`), bukan Maps JavaScript API — supaya tidak kena biaya Google Maps API.
 - **GrabMaps (via Amazon Location Service) dipakai khusus untuk autocomplete alamat** (bukan hitung jarak) — dipilih setelah LocationIQ (berbasis data OpenStreetMap) terbukti kurang akurat/update untuk alamat Indonesia. GrabMaps datanya dikumpulkan langsung oleh mitra Grab di lapangan, khusus SEA. Diakses lewat AWS Places API v2 (region `ap-southeast-1`, provider GrabMaps otomatis aktif di region ini) — bukan resource "Place Index" lama (legacy), dan bukan lewat Cognito Identity Pool, tapi API key native yang dibatasi per-domain (`Allowed referrers`) + per-action, jadi aman dipanggil langsung dari browser tanpa proxy. Konsekuensi: free tier AWS ada batas waktu (beda dari LocationIQ yang gratis terus-menerus), jadi setelah kuota/masa gratis habis akan mulai kena biaya per-request.
 - **QRIS statis → dinamis dilakukan di browser** (`qrisToDynamic`), bukan lewat payment gateway (Midtrans/Xendit dkk) — supaya tidak ada biaya transaksi. Trade-off: tidak ada konfirmasi pembayaran otomatis, admin harus verifikasi manual dari bukti transfer yang dikirim via WA (makanya alur selalu diarahkan ke `wa.me` setelah "bayar").

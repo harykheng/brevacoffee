@@ -752,8 +752,11 @@ async function onAddressBlur(textarea) {
 }
 
 // ================================================================
-// STATIC ONGKIR — distance-based flat rate
+// ONGKIR — Biteship real-time rates (GoSend/GrabExpress), fallback ke
+// tarif flat berbasis jarak (Haversine) kalau Edge Function gagal/kosong
 // ================================================================
+
+let _ongkirOptions = []; // hasil terakhir dari Biteship, dipakai selectOngkirOption()
 
 function haversineDistance(lat1, lng1, lat2, lng2) {
   const R    = 6371;
@@ -772,10 +775,7 @@ function calcShippingRate(km) {
   return null; // di luar jangkauan
 }
 
-function autoCalcShipping() {
-  const box = document.getElementById('ongkirOptions');
-  if (!box || !_deliveryLat || !_deliveryLng) return;
-
+function renderStaticFallbackShipping(box) {
   const km    = haversineDistance(STORE_LAT, STORE_LNG, _deliveryLat, _deliveryLng);
   const price = calcShippingRate(km);
 
@@ -805,6 +805,57 @@ function autoCalcShipping() {
     </div>`;
 
   renderCheckoutTotals();
+}
+
+function renderOngkirOptions(options) {
+  const box = document.getElementById('ongkirOptions');
+  _ongkirOptions = options;
+
+  box.innerHTML = `<div class="ongkir-options-list">${options.map((o, i) => `
+    <div class="ongkir-option-item${i === 0 ? ' selected' : ''}" onclick="selectOngkirOption(${i})">
+      <div class="ongkir-left">
+        <div class="ongkir-courier">${escapeHTML(o.courierName)} — ${escapeHTML(o.serviceName)}</div>
+        <div class="ongkir-eta">${escapeHTML(o.duration || '')}</div>
+      </div>
+      <div class="ongkir-price">${formatPrice(o.price)}</div>
+    </div>`).join('')}</div>`;
+
+  selectOngkirOption(0);
+}
+
+function selectOngkirOption(index) {
+  const o = _ongkirOptions[index];
+  if (!o) return;
+  _selectedShipping = { price: o.price, label: `${o.courierName} - ${o.serviceName}` };
+
+  document.querySelectorAll('.ongkir-option-item').forEach((el, i) => {
+    el.classList.toggle('selected', i === index);
+  });
+  renderCheckoutTotals();
+}
+
+async function autoCalcShipping() {
+  const box = document.getElementById('ongkirOptions');
+  if (!box || !_deliveryLat || !_deliveryLng) return;
+
+  box.innerHTML = `<div class="ongkir-loading"><span class="spinner-sm"></span> Mengecek ongkir…</div>`;
+
+  try {
+    const weightGrams = cartCount() * DEFAULT_ITEM_WEIGHT_G;
+    const { data, error } = await supabaseClient.functions.invoke('check-shipping', {
+      body: {
+        originLat: STORE_LAT, originLng: STORE_LNG,
+        destLat: _deliveryLat, destLng: _deliveryLng,
+        weightGrams, orderValue: cartTotal(),
+      },
+    });
+
+    if (error || !data?.options?.length) throw new Error('no rates');
+    renderOngkirOptions(data.options);
+  } catch {
+    // Biteship gagal / tidak ada kurir ke lokasi ini — fallback ke tarif jarak statis
+    renderStaticFallbackShipping(box);
+  }
 }
 
 async function submitOrder() {

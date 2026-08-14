@@ -1,10 +1,10 @@
 # Breva Coffee — Setup Guide
 
-Website e-commerce sederhana untuk brand kopi Breva. Stack: HTML + CSS + Vanilla JS, Supabase (database + auth + storage), deploy ke Vercel/Netlify. Tanpa backend server — semua logic (ongkir, QRIS, dsb) jalan di browser.
+Website e-commerce sederhana untuk brand kopi Breva. Stack: HTML + CSS + Vanilla JS, Supabase (database + auth + storage), deploy ke Vercel/Netlify. Hampir semua logic (QRIS, promo, dsb) jalan di browser tanpa backend server — satu-satunya pengecualian adalah cek ongkir real-time, yang lewat 1 Supabase Edge Function kecil karena butuh menyembunyikan API key Biteship.
 
 **Fitur utama:**
 - Katalog produk dengan varian (ukuran, suhu, dll) dan badge (New/Terlaris)
-- Checkout Pickup & Delivery, dengan alamat autocomplete (GrabMaps via Amazon Location Service) dan ongkir otomatis berdasarkan jarak dari toko
+- Checkout Pickup & Delivery, dengan alamat autocomplete (GrabMaps via Amazon Location Service) dan ongkir real-time (Biteship — GoSend/GrabExpress), fallback ke tarif jarak statis kalau Biteship tidak tersedia
 - Kode promo (persen / nominal, minimum order, tanggal expired)
 - Pembayaran QRIS dinamis — nominal digenerate langsung di browser dari QRIS statis toko, tanpa payment gateway/API berbayar
 - Konfirmasi pesanan otomatis terkirim ke WhatsApp admin, tersimpan di database sebagai status `pending`
@@ -203,9 +203,14 @@ const STORE_MAPS_URL = 'https://maps.google.com/...';   // link share Google Map
 const AWS_PLACES_API_KEY = 'v1.public.xxxxxxxxxxxxxxxxxxxx';
 const AWS_PLACES_REGION  = 'ap-southeast-1';   // region yang didukung GrabMaps sebagai data provider
 
-// Koordinat toko — dipakai untuk hitung ongkir berdasarkan jarak (rumus Haversine, tanpa API berbayar)
+// Koordinat toko — dipakai sebagai titik asal pengecekan ongkir, dan fallback
+// tarif jarak statis (Haversine) kalau Biteship gagal/tidak tersedia
 const STORE_LAT = -6.2308;
 const STORE_LNG = 106.6480;
+
+// Estimasi berat per item (gram) untuk hitung ongkir Biteship — produk di sini
+// tidak nyimpen berat per-produk, jadi dipakai angka rata-rata per pesanan
+const DEFAULT_ITEM_WEIGHT_G = 300;
 
 // QRIS statis merchant — dari bank/GoPay/OVO/QRIS toko, biasanya di stiker QRIS fisik.
 // Nominal dinamis digenerate otomatis di browser saat checkout, tidak butuh payment gateway.
@@ -217,7 +222,32 @@ Supabase Dashboard → **Project Settings** → **API** → salin **Project URL*
 
 ---
 
-## 3. Deploy ke Vercel
+## 3. Setup Ongkir Real-time (Biteship)
+
+Fitur cek ongkir GoSend/GrabExpress pakai [Biteship](https://biteship.com). Berbeda dari key lain di `js/config.js`, **API key Biteship adalah secret** — tidak boleh ditaruh di kode frontend, jadi dipanggil lewat Supabase Edge Function (`supabase/functions/check-shipping`) yang jadi proxy.
+
+### Dapatkan API Key Biteship
+1. Daftar/login ke [dashboard.biteship.com](https://dashboard.biteship.com/integrations)
+2. Ambil **Auth Token** (diawali `biteship_test_...` untuk testing atau `biteship_live_...` untuk production)
+
+### Deploy Edge Function
+Butuh [Supabase CLI](https://supabase.com/docs/guides/cli) terinstall (`npm install -g supabase`):
+
+```bash
+supabase login
+supabase link --project-ref XXXXXXXXXXXXXXXX   # project ref dari Supabase Dashboard URL
+supabase functions deploy check-shipping
+supabase secrets set BITESHIP_API_KEY=biteship_xxxxxxxxxxxxxxxxxxxx
+```
+
+Alternatif tanpa CLI: buka Supabase Dashboard → **Edge Functions** → **Deploy a new function**, paste isi `supabase/functions/check-shipping/index.ts`, lalu set secret `BITESHIP_API_KEY` di **Edge Functions → Manage secrets**.
+
+### Fallback
+Kalau Biteship gagal (API down, area tidak ter-cover kurir, dsb), website otomatis fallback ke tarif jarak statis (Haversine, ≤3km/6km/10km) tanpa mengganggu checkout customer — tidak wajib beres 100% dari awal.
+
+---
+
+## 4. Deploy ke Vercel
 
 1. Buka [vercel.com](https://vercel.com) → login dengan GitHub
 2. Klik **Add New** → **Project** → pilih repository ini
@@ -231,7 +261,7 @@ Supabase Dashboard → **Project Settings** → **API** → salin **Project URL*
 
 ---
 
-## 4. Struktur File
+## 5. Struktur File
 
 ```
 brevacoffee/
@@ -245,17 +275,20 @@ brevacoffee/
 │   ├── config.js       ← ⚠️ Edit ini dulu! Supabase, WA admin, toko, GrabMaps, QRIS
 │   ├── catalog.js       ← Logic katalog, keranjang, ongkir, promo, checkout, pembayaran QRIS
 │   └── admin.js         ← Logic login, CRUD produk/promo, pengaturan, kelola pesanan
+├── supabase/
+│   └── functions/
+│       └── check-shipping/  ← Edge Function proxy Biteship (satu-satunya kode "backend")
 └── README.md
 ```
 
 ---
 
-## 5. Alur Pemesanan (Customer)
+## 6. Alur Pemesanan (Customer)
 
 1. Pilih produk & varian di katalog → masuk keranjang
 2. Pilih tipe pesanan: **Pickup** (ambil di toko) atau **Delivery**
 3. Kalau Delivery: isi profil (nama, WhatsApp) lewat kartu profil yang membuka bottom sheet — alamat diisi dengan autocomplete GrabMaps, plus catatan alamat opsional
-4. Ongkir dihitung otomatis berdasarkan jarak alamat ke toko (tidak ada biaya API tambahan)
+4. Ongkir dicek otomatis lewat Biteship (pilihan GoSend/GrabExpress dengan harga real-time) — kalau tidak tersedia, fallback ke tarif jarak statis
 5. Bisa pakai kode promo (persen/nominal, dicek minimum order & masa berlaku)
 6. Konfirmasi pesanan → QRIS dinamis digenerate langsung di browser sesuai total akhir, bisa disimpan sebagai gambar (tombol "Simpan QR")
 7. Setelah bayar, customer konfirmasi → pesanan tersimpan ke database dengan status `pending`, dan link WhatsApp ke admin terbuka otomatis untuk kirim bukti bayar
@@ -265,7 +298,7 @@ QRIS di sini **tidak ada masa kedaluwarsa** — karena digenerate secara determi
 
 ---
 
-## 6. Panduan Admin
+## 7. Panduan Admin
 
 ### Akses Dashboard
 Buka: `namawebsite.vercel.app/admin.html` → login dengan email + password.
@@ -295,7 +328,7 @@ Contoh: `08123456789` → tulis `628123456789`
 
 ---
 
-## 7. Catatan Keamanan
+## 8. Catatan Keamanan
 
 - Supabase URL dan anon key ada di kode JS — ini **normal** untuk static site. Anon key hanya boleh baca data publik.
 - Row Level Security (RLS) memastikan:
@@ -304,4 +337,5 @@ Contoh: `08123456789` → tulis `628123456789`
   - Settings: publik boleh baca (untuk tampilan katalog); ubah hanya admin.
   - Orders: publik **hanya bisa membuat** pesanan (insert), **tidak bisa membaca** pesanan siapapun — mencegah kebocoran data pelanggan lain. Baca/ubah status hanya admin login.
 - AWS Places API key di kode frontend juga normal — keamanannya dijaga lewat "Allowed referrers" (client restriction) yang dibatasi ke domain sendiri, dan scope action-nya cuma `SearchText`/`Suggest`/`GetPlace`/`ReverseGeocode` (least privilege, tidak bisa dipakai buat resource AWS lain).
+- **Biteship API key BEDA** — ini secret dan tidak punya mekanisme pembatasan domain seperti AWS. **Jangan pernah** taruh di `js/config.js`. Selalu lewat Edge Function `check-shipping` yang menyimpannya sebagai Supabase secret (server-side only, tidak pernah dikirim ke browser).
 - Jangan pernah taruh **Service Role key** Supabase di kode frontend.

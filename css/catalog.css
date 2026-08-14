@@ -719,6 +719,43 @@
 .ongkir-eta      { font-size: 11px; font-weight: 500; color: var(--text-soft); margin-top: 2px; }
 .ongkir-price    { font-size: 15px; font-weight: 800; color: var(--primary); flex-shrink: 0; }
 
+.ongkir-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+.spinner-sm {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border, #e8ded4);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+  flex-shrink: 0;
+}
+
+.ongkir-options-list { display: flex; flex-direction: column; gap: 8px; }
+
+.ongkir-option-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 14px;
+  background: #fff;
+  border: 1.5px solid var(--border-light, #e8ded4);
+  border-radius: var(--radius-md);
+  gap: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  animation: fadeIn 0.25s ease;
+}
+.ongkir-option-item:hover     { border-color: var(--primary); }
+.ongkir-option-item.selected  { border-color: var(--primary); background: var(--latte-xlight); }
+
 /* ---- CO SHIPPING ROW ---- */
 .co-shipping-row {
   display: flex;
