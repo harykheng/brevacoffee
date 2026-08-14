@@ -26,10 +26,8 @@ const BANNER_SUBTITLE = 'Cek semua menu terbaru Breva Coffee';
 const INSTAGRAM_URL = 'https://instagram.com/brevacoffee';
 const TIKTOK_URL    = 'https://tiktok.com/@brevacoffee';
 
-// GrabMaps via Amazon Location Service — autocomplete alamat pengiriman
-// Key dibatasi per-domain (client restriction) di AWS console, aman ditaruh di frontend
-const AWS_PLACES_API_KEY = 'v1.public.eyJqdGkiOiIxMGQxY2JiYS02ZDI5LTRmNDAtOTYwZC1kODQ4ODJkMTViNWQifRzIHZWmUEouq7Nxm1Jc4iVz82uKV6L_OdAvJ_dhAKHACuo6YCmqs2kr0O734EViPr5jiqEdruyFOLXN5Hwdq2PZhmmij4f4C8LWgh40TI_c_VaL9ZEJg8EuKURaWFvjl_ulIPLEAWi2dLQ8-bFa4afKkEZtt2HTlRISR0ZBCDWrTxAA8ZdRpdewvHK9pE4wMkttakaEXCtgC6AWwqj8x_sIcuxT-aK86pdEOANSEtL87f9gPj_2zN7Y7L2jBOpHgGWpECj907NNx_0rCQrmcrVLEP72QPb7YCnH1pPe9SlBtbJ5ZS-u6bvIdZ5Rw_0LaynsPRMrjOyd8s63LK-yfxY.MzRjYzZmZGUtZmY3NC00NDZiLWJiMTktNTc4YjUxYTFlOGZi';
-const AWS_PLACES_REGION  = 'ap-southeast-1';
+// LocationIQ API key (autocomplete alamat pengiriman)
+const LOCATIONIQ_KEY = 'pk.ef1ed798f746b8028e0dba1998dab9f2';
 
 // Koordinat toko (untuk kalkulasi ongkir berdasarkan jarak)
 // Verifikasi di: https://maps.google.com/?q=-6.2308,106.6480
