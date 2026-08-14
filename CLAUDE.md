@@ -1,105 +1,98 @@
 # Breva Coffee — Project Context
 
-Website pemesanan kopi untuk UMKM. **Vanilla HTML/CSS/JS, tanpa framework.** Supabase dipakai sebagai database + auth + storage; hampir semua logic bisnis (QRIS, validasi promo) jalan di browser. Satu pengecualian: cek ongkir real-time (Biteship) lewat 1 Supabase Edge Function kecil, karena API key Biteship secret dan tidak boleh nempel di frontend — lihat bagian "Ongkir" di bawah. Tujuan desain: biaya operasional sekecil mungkin supaya cocok untuk skala UMKM.
+Website pemesanan kopi untuk UMKM. **React + Vite**, dua aplikasi terpisah dalam satu repo (Vite multi-page app): katalog customer di `/`, dashboard admin di `/admin/`. Supabase dipakai sebagai database + auth + storage; hampir semua logic bisnis (QRIS, validasi promo) jalan di browser. Satu pengecualian: cek ongkir real-time (Biteship) lewat 1 Supabase Edge Function kecil, karena API key Biteship secret dan tidak boleh nempel di frontend — lihat bagian "Ongkir" di bawah. Tujuan desain: biaya operasional sekecil mungkin supaya cocok untuk skala UMKM.
 
 Untuk setup/deploy/schema SQL, lihat `README.md`. File ini fokus menjelaskan **cara kerja tiap fitur** dan **di mana letak kodenya**, supaya sesi berikutnya tidak perlu re-explore dari nol.
+
+Repo ini dulu vanilla HTML/CSS/JS (lihat git history sebelum commit rewrite React), full-rewrite jadi React karena logic-nya sudah terlalu kompleks untuk dikelola manual lewat DOM manipulation (`catalog.js`/`admin.js` masing-masing >1000 baris). Business logic-nya (QRIS EMV, Haversine, dsb) dipindah apa adanya (bukan ditulis ulang) — kalau ada keraguan soal behavior yang "benar", cek `src/shared/lib/` dulu, itu port langsung dari kode lama.
 
 ---
 
 ## Peta File
 
-| File | Isi |
+| Path | Isi |
 |---|---|
-| `index.html` | Halaman customer: katalog, keranjang, checkout, modal QRIS, modal profil, ringkasan pesanan |
-| `admin.html` | Dashboard admin: login, tab Produk/Promo/Pesanan/Pengaturan, modal form & detail |
-| `js/config.js` | Semua konstanta yang wajib diedit per-toko (Supabase, WA, LocationIQ, koordinat, QRIS statis) |
-| `js/catalog.js` | Seluruh logic customer-facing (~1300 baris) |
-| `js/admin.js` | Seluruh logic admin-facing (~1130 baris) |
-| `css/main.css` | Style bersama (variabel warna, font, modal generik) |
-| `css/catalog.css` | Style khusus halaman katalog/checkout/QRIS/profile sheet |
-| `css/admin.css` | Style khusus dashboard admin |
+| `index.html` / `admin/index.html` | Vite entry point kedua aplikasi (root div + script module) |
+| `vite.config.js` | Config Vite, dua entry point (`main` = customer, `admin` = admin) |
+| `src/customer/` | Aplikasi React customer: `App.jsx` (step switcher + modal orchestration), `CartContext.jsx` (state global order flow via `useReducer`), `components/`, `hooks/useShipping.js` |
+| `src/admin/` | Aplikasi React admin: `App.jsx` (tab shell), `AuthContext.jsx` (Supabase Auth session), `components/` |
+| `src/shared/lib/` | Pure functions dipakai kedua app: `qris.js` (crc16/qrisToDynamic), `shipping.js` (Haversine), `cart.js` (cart math), `format.js`, `whatsapp.js` (message builder), `config.js` (baca env var `VITE_*`), `supabaseClient.js`, `products.js`/`promos.js`/`orders.js`/`settings.js` (mutation functions ke Supabase) |
+| `src/shared/hooks/` | `useProducts`, `usePromos`, `useOrders`, `useSettings` — data-fetching hooks dipakai kedua app |
+| `src/shared/components/` | `Modal.jsx` (shell generik modal admin), `Toast.jsx` (+ `useToast()`), `ConfirmDialog.jsx` (+ `useConfirmDialog()`) |
+| `css/main.css` / `catalog.css` / `admin.css` | Style — **tidak diubah dari versi vanilla**, di-import apa adanya sebagai global stylesheet, semua class name sama persis |
 | `supabase/functions/check-shipping/index.ts` | Edge Function (Deno) — proxy ke Biteship Rates API, satu-satunya kode yang jalan di server bukan browser |
 
-Tidak ada build step — edit langsung, refresh browser.
+Build via Vite (`npm run dev` / `npm run build`) — beda dari versi vanilla dulu yang tanpa build step sama sekali.
 
 ---
 
-## Alur Customer (`index.html` + `js/catalog.js`)
+## Alur Customer (`src/customer/`)
 
-### Step 1 — Pilih tipe pesanan
-`selectOrderType()` set `orderType` ke `'pickup'` atau `'delivery'`, lalu render tanggal ambil/kirim (`renderDateChips()`). Lanjut ke katalog via `goToStep2()`.
+State global order flow ada di `CartContext.jsx` (`useReducer`), diakses lewat `useCart()` di komponen manapun di dalam `<CartProvider>`. Field penting: `step` (1/2/3), `orderType`, `cart` (key = `productId` atau `productId|Var1|Var2` untuk kombinasi varian), `activePromo`, `selectedShipping`, `profile`, `note`, plus `shippingStatus`/`shippingOptions`/`shippingStaticKm` untuk hasil cek ongkir.
 
-### Step 2 — Katalog & keranjang
-- `loadProducts()` ambil dari tabel `products` (hanya yang `is_visible = true` lewat RLS).
-- Produk tanpa varian: tombol +/- langsung (`updateQty`). Produk dengan varian: buka bottom sheet (`openVariantSheet`) untuk pilih varian dulu baru masuk cart (`confirmVariantAdd`).
-- `cart` object key-nya `productId` (produk polos) atau `productId|Var1|Var2` (produk dengan varian) — supaya kombinasi varian berbeda dianggap item cart terpisah.
-- Sticky footer bawah (`syncStickyFooter`) selalu nampilin total & tombol lanjut.
+### Step 1 — `OrderTypeStep.jsx`
+Pilih pickup/delivery + tanggal (chip 7 hari dari `buildDateChips()` di `shared/lib/format.js`). Dispatch `SELECT_ORDER_TYPE`/`SET_DATE`, lanjut lewat `SET_STEP`.
 
-### Step 3 — Checkout (`renderCheckoutStep`)
-- **Kartu Profil** (`profileCard`): tap untuk buka bottom sheet (`openProfileModal`) berisi nama, WA, dan — kalau delivery — alamat + catatan alamat. Disimpan ke UI state via `saveProfile()` (tidak langsung ke DB, baru di-submit saat checkout).
-- **Alamat**: autocomplete pakai LocationIQ (`onAddressInput` → debounce → `fetchAddressSuggestions` → `renderAddressSuggestions`). Pilih saran → `selectAddressSuggestion` set `_deliveryLat`/`_deliveryLng` dan trigger `autoCalcShipping()`.
-- **Ongkir**: `autoCalcShipping()` (async) memanggil Edge Function `check-shipping` via `supabaseClient.functions.invoke()`, kirim koordinat asal/tujuan + estimasi berat (`cartCount() * DEFAULT_ITEM_WEIGHT_G`) + nilai pesanan. Edge Function proxy ke Biteship Rates API (`POST /v1/rates/couriers`, courier `gosend,grab`) pakai `BITESHIP_API_KEY` yang tersimpan sebagai Supabase secret (tidak pernah ke browser). Hasil beberapa opsi kurir ditampilkan sebagai list yang bisa dipilih (`renderOngkirOptions` → `selectOngkirOption`).
-  - **Fallback**: kalau Edge Function gagal/error/kosong (Biteship down, area tidak ter-cover kurir, dsb), otomatis jatuh ke `renderStaticFallbackShipping()` — tarif flat berbasis jarak garis lurus (`haversineDistance()` + `calcShippingRate(km)`: ≤3km=Rp8rb, ≤6km=Rp15rb, ≤10km=Rp22rb, >10km=di luar jangkauan). Ini bukan sekadar cadangan teori — checkout tidak boleh macet total kalau API pihak ketiga bermasalah.
-  - Ditampilkan di `#ongkirOptions` pada halaman utama (**bukan** di dalam modal profil — keputusan desain eksplisit supaya estimasi ongkir tetap terlihat saat customer isi form).
-- **Promo**: `validatePromoCode()` query `promo_codes` by `code` + `is_active = true`, cek `min_order`. Hasil disimpan di `activePromo`.
-- **Totals**: `cartTotal()` → `getDiscountAmount()` → `cartFinalTotal()` (sudah termasuk ongkir kalau delivery).
+### Step 2 — `CatalogStep.jsx` + `ProductCard.jsx` + `VariantSheet.jsx`
+- `useProducts({ onlyVisible: true })` ambil dari tabel `products` (RLS sudah filter `is_visible=true` juga, filter di query cuma optimisasi).
+- Produk tanpa varian: qty stepper langsung (dispatch `SET_CART_QTY`). Produk dengan varian: buka `VariantSheet` (state lokal `selected`/`qty`, konfirm dispatch `ADD_TO_CART` dengan `cartKey` gabungan label varian).
+- Cart math (`cartCount`, `cartTotal`, `getDiscountAmount`, `cartFinalTotal`, `getProductCartQty`) semua pure function di `shared/lib/cart.js` — dipanggil dengan `state.cart` sebagai parameter, bukan baca state global langsung.
 
-### Pembayaran QRIS (`showQrisPayment` → modal `#qrisModal`)
-- `qrisToDynamic(QRIS_STATIC, amount)` — inject nominal ke payload EMV QRIS statis toko + hitung ulang CRC16 (`crc16`). **Deterministik**: input sama selalu hasilkan string sama, sehingga QR yang sama bisa digenerate ulang kapan saja tanpa expiry dan tanpa payment gateway.
-- QR dirender ke `<canvas>` pakai library `qrcodejs`. Tombol **"Simpan QR"** (`saveQrisImage`) export canvas ke PNG (`canvas.toDataURL`).
-- Setelah customer klik "Konfirmasi", `confirmQrisPayment()` insert row ke `orders` (status `pending`) termasuk `qris_string` yang sudah digenerate, lalu buka `showOrderSummary()`.
+### Step 3 — `CheckoutStep.jsx`
+- **Kartu Profil**: tap buka `ProfileModal` (di-render selalu di `App.jsx`, toggle via `isOpen` prop — bukan mount/unmount, supaya form state persist antar buka-tutup).
+- **Alamat**: `AddressAutocomplete.jsx` — LocationIQ REST API lewat `fetch` biasa, state lokal (results/debounce timer), lapor koordinat ke parent (`ProfileModal`) lewat `onCoordsChange`. **Tidak pernah** trigger cek ongkir sendiri.
+- **Ongkir**: `useShipping().calculate(lat, lng, weightGrams, orderValue)` dipanggil **cuma sekali**, dari handler save di `ProfileModal.jsx` — bukan dari `useEffect` yang watch perubahan alamat (itu justru bug yang mau dihindari, lihat "Kenapa begini" di bawah). Hasilnya dispatch ke `CartContext` (`SET_SHIPPING_OPTIONS`/`SET_SHIPPING_STATIC`/`SET_SHIPPING_UNAVAILABLE`), ditampilkan `OngkirOptions.jsx` yang render di `CheckoutStep` (bukan di dalam modal profil).
+  - `useShipping.js` cuma punya SATU jalur: `checkBiteshipRatesViaEdgeFunction()` → `supabase.functions.invoke('check-shipping')`. Tidak ada jalur "panggil Biteship langsung dari browser" di kode React ini sama sekali (versi vanilla sempat punya jalur testing seperti itu, sengaja tidak diikutkan saat rewrite).
+  - **Fallback**: kalau Edge Function gagal/error/kosong, otomatis `haversineDistance()` + `calcShippingRate(km)` dari `shared/lib/shipping.js` (≤3km=Rp8rb, ≤6km=Rp15rb, ≤10km=Rp22rb, >10km=`SET_SHIPPING_UNAVAILABLE`).
+- **Promo**: `fetchActivePromoByCode()` (`shared/lib/promos.js`) query `promo_codes` by `code` + `is_active=true`, cek `min_order`. Hasil dispatch `APPLY_PROMO`.
 
-### Ringkasan Pesanan (`showOrderSummary` → modal `#orderSummaryModal`)
-- Tampilkan kode pesanan, rincian pengiriman (termasuk alamat toko — supaya customer tahu dikirim dari mana), rincian item & total.
-- Tombol **"💬 Kirim Bukti Transfer via WA"** (`sendWhatsAppProof`) buka `_ossWaUrl` (link `wa.me` yang sudah disiapkan saat konfirmasi).
-- Tombol **"📷 Tampilkan QR lagi"** (`reshowQris`) — pakai `_ossQrisString`/`_ossQrisAmount` (diisi di `showOrderSummary`, direset di `closeOrderSummary`) untuk render ulang QR yang sama persis, buka lagi modal QRIS. Berguna kalau customer sudah menutup layar QR sebelum sempat bayar.
+### Pembayaran QRIS — `QrisModal.jsx`
+- Snapshot order (`pendingOrder`) dibuat di `App.jsx`'s `handleSubmitQris()` — bukan di dalam `QrisModal` sendiri, supaya validasi profil bisa jalan sebelum modal kebuka.
+- `qrisToDynamic(QRIS_STATIC, amount)` dari `shared/lib/qris.js` — inject nominal ke payload EMV + hitung ulang CRC16. **Deterministik**: input sama selalu hasilkan string sama, QR bisa digenerate ulang kapan saja tanpa expiry.
+- QR dirender ke `<canvas>` pakai package `qrcode` (`QRCode.toCanvas()`, bukan `qrcodejs` versi lama yang gak ada npm package resminya). Tombol "Simpan QR" export canvas ke PNG (`canvas.toDataURL`).
+- Konfirmasi → `insertOrder()` (`shared/lib/orders.js`) insert row `orders` (status `pending`, termasuk `qris_string`) → `onConfirmed` callback ke `App.jsx` → buka `OrderSummaryModal`.
 
-### State module-level penting di `catalog.js`
-```
-cart               // isi keranjang
-orderType          // 'pickup' | 'delivery'
-activePromo        // kode promo yang sedang aktif
-_selectedShipping  // { price, label } hasil autoCalcShipping
-_deliveryLat/Lng   // koordinat hasil pilih alamat
-_qrisPendingOrder  // snapshot order sebelum dikonfirmasi (dipakai showQrisPayment → confirmQrisPayment)
-_ossWaUrl          // link WA admin, diisi setelah insert order sukses
-_ossQrisString     // QRIS string untuk reshowQris()
-_ossQrisAmount     // nominal untuk reshowQris()
-```
+### Ringkasan Pesanan — `OrderSummaryModal.jsx`
+- Kode pesanan, rincian pengiriman (termasuk alamat toko), item & total.
+- "Kirim Bukti Transfer via WA" buka `order.waUrl` (link `wa.me` dibangun di `QrisModal` pakai `buildQrisConfirmMessage()` dari `shared/lib/whatsapp.js`), lalu dispatch `RESET_ORDER` (reset penuh state balik ke step 1).
+- "Tampilkan QR lagi" (`onReshowQris`) — App.jsx pindahkan order dari `confirmedOrder` balik ke `pendingOrder`, `QrisModal` render ulang QR dari `qris_string` yang sama persis.
 
 ---
 
-## Alur Admin (`admin.html` + `js/admin.js`)
+## Alur Admin (`src/admin/`)
 
-Login via Supabase Auth (`handleLogin`/`checkAuth`) — hanya user yang dibuat manual di Supabase Dashboard yang bisa masuk (lihat README §1 "Buat Akun Admin").
+`AuthContext.jsx` wrap Supabase Auth session (`supabase.auth.getSession()` + `onAuthStateChange`). `App.jsx` render `LoginScreen` kalau `session` null, `Dashboard` kalau ada session — hanya user yang dibuat manual di Supabase Dashboard yang bisa masuk (lihat README §1 "Buat Akun Admin").
 
-### Tab Produk
-CRUD standar ke tabel `products`. Upload foto ke bucket `product-images` (`saveProduct` → `supabaseClient.storage`). Varian dikelola lewat UI builder (`addVariantGroup`/`addVariantOption` → `getVariantsFromForm()` serialize ke JSON, `populateVariantGroups()` deserialize saat edit).
+### Tab Produk — `ProductsTab.jsx` + `ProductFormModal.jsx`
+CRUD ke tabel `products` lewat `saveProduct()`/`deleteProduct()` (`shared/lib/products.js`, termasuk upload foto ke bucket `product-images`). Varian dikelola sebagai array-of-objects local state (`variantGroups`) di form, diserialize ke JSON pas submit — beda dari versi vanilla yang scrape dari DOM langsung, tapi hasil akhirnya (shape JSON di kolom `variants`) sama persis.
 
-### Tab Promo
-CRUD ke `promo_codes`. Tipe diskon `percent` atau `flat`, opsional `min_order` dan `expires_at`.
+### Tab Promo — `PromoTab.jsx` + `PromoFormModal.jsx`
+CRUD ke `promo_codes` lewat `savePromo()`/`deletePromo()`. Tipe diskon `percent` atau `flat`, opsional `min_order` dan `expires_at`.
 
-### Tab Pesanan
-- `loadOrders()` ambil semua row `orders` (RLS: hanya `authenticated` boleh SELECT — customer tidak bisa lihat pesanan orang lain).
-- Filter status: `pending` (default) → `confirmed` → `done`, atau `cancelled` (`filterOrders`).
-- `openOrderDetail(orderId)` buka modal detail (`renderOrderDetailHTML`) dengan aksi:
-  - **✅ Konfirmasi / ✅ Selesai / ❌ Batalkan** → `changeOrderStatus()` update kolom `status`.
-  - **🖨️ Print Label** (`openPrintLabel`) → render `#printLabel` tersembunyi lalu `window.print()`.
-  - **📤 WA Customer** (`sendOrderSummaryToWA`) → generate ringkasan pesanan (item, total, alamat, status saat ini) dan buka `wa.me/{customer_wa}` terisi otomatis — dipakai kalau customer tanya status pesanan via chat, admin tinggal klik kirim tanpa ngetik ulang manual.
+### Tab Pesanan — `OrdersTab.jsx` + `OrderDetailModal.jsx` + `PrintLabel.jsx`
+- `useOrders()` ambil semua row `orders` (RLS: hanya `authenticated` boleh SELECT), filter client-side pesanan `pending` yang sudah lewat 24 jam (disembunyikan dari list, bukan dihapus).
+- Filter status via tab: `pending` (default) → `confirmed` → `done`, atau `cancelled`.
+- `OrderDetailModal` aksi: **Konfirmasi/Selesai/Batalkan** → `updateOrderStatus()`; **Print Label** → `window.print()` (lihat catatan portal di bawah); **WA Customer** → `buildAdminOrderSummaryMessage()` (`shared/lib/whatsapp.js`) buka `wa.me/{customer_wa}` terisi otomatis.
+- **`PrintLabel.jsx` pakai React Portal** (`createPortal`) ke `#printLabel`, sebuah `<div>` yang sengaja ditaruh sebagai **direct child `<body>`** di `admin/index.html` (bukan di dalam `#root`) — karena CSS `@media print` di `admin.css` pakai selector `body > *:not(#printLabel)` buat nyembunyiin semua elemen lain saat print. Kalau `#printLabel` dipindah ke dalam tree React normal (nested di `#root`), print CSS-nya rusak karena `#root` sendiri bakal ke-hide duluan.
 
-### Tab Pengaturan
-Form tunggal yang upsert ke tabel `settings` (row `id = 1`): nama/ikon/logo brand, alamat & jam toko, link Maps, banner katalog (judul/subjudul/foto), link Instagram/TikTok. Upload logo & foto banner juga lewat bucket `product-images`.
+### Tab Pengaturan — `SettingsTab.jsx`
+Form yang upsert ke tabel `settings` (row `id=1`) lewat `saveSettings()` (`shared/lib/settings.js`): nama/ikon/logo brand, alamat & jam toko, link Maps, banner katalog, link Instagram/TikTok. Upload logo & banner lewat bucket `product-images`.
 
-`js/catalog.js` (`loadSettings`/`applyBrandSettings`) baca tabel ini saat halaman customer dibuka dan override nilai default dari `config.js` — jadi admin bisa ganti branding tanpa sentuh kode. Kalau tabel `settings` belum dibuat/kosong, fallback ke `config.js` secara silent (tidak error).
+`useSettings()` (hook yang sama dipakai kedua app) di-consume `src/customer/App.jsx` buat baca `settings` sekali di top level dan diteruskan sebagai prop `settings` ke tiap step — bukan tiap komponen manggil `useSettings()` sendiri-sendiri, supaya gak double-fetch row yang sama. Kalau tabel `settings` belum dibuat/kosong, hook fail silent dan komponen fallback ke `config.js` (`shared/lib/config.js`, baca env var `VITE_*`).
 
 ---
 
 ## Keputusan Desain / "Kenapa begini"
 
-- **Client-side by default, backend hanya kalau benar-benar wajib.** QRIS dan promo sengaja dibuat client-side supaya tidak ada biaya API per-transaksi. Ongkir jadi pengecualian: Biteship butuh secret key yang (beda dari LocationIQ) tidak bisa dibatasi per-domain, jadi idealnya **wajib** proxy — itu alasan Edge Function `check-shipping` dibuat (`supabase/functions/check-shipping`). **Status saat ini: masih testing mode** — `BITESHIP_TEST_API_KEY` dipanggil langsung dari browser (`checkBiteshipRatesDirect()` di `catalog.js`) supaya bisa cepat dites tanpa deploy Edge Function dulu. Ini ditandai jelas sebagai sementara di kode — **wajib** pindah ke `checkBiteshipRatesViaEdgeFunction()` sebelum ganti ke key `biteship_live_...`, karena key live yang ke-expose bisa dipakai orang lain bikin pesanan/quota atas nama akun Biteship pemilik toko.
-- **Ongkir dicoba Biteship dulu (real-time, akurat per kurir), baru fallback ke Haversine + tarif flat per tier** kalau Biteship gagal. Percobaan integrasi Biteship yang lebih awal (lihat git history) sempat dua kali direvert karena API key-nya ditaruh langsung di `config.js` — pola itu tidak dipakai lagi di versi sekarang.
-- **Maps hanya link share statis** (`STORE_MAPS_URL`), bukan Maps JavaScript API — supaya tidak kena biaya Google Maps API.
-- **LocationIQ dipakai khusus untuk autocomplete alamat** (bukan hitung jarak) — tier gratisnya cukup untuk skala UMKM. Sempat dicoba diganti ke GrabMaps (via Amazon Location Service Places API) karena dikira datanya lebih akurat untuk Indonesia, tapi dibalikin lagi ke LocationIQ — datanya ternyata sudah cukup lengkap, masalahnya cuma di list autocomplete yang tidak selalu muncul (bukan masalah kelengkapan data).
-- **QRIS statis → dinamis dilakukan di browser** (`qrisToDynamic`), bukan lewat payment gateway (Midtrans/Xendit dkk) — supaya tidak ada biaya transaksi. Trade-off: tidak ada konfirmasi pembayaran otomatis, admin harus verifikasi manual dari bukti transfer yang dikirim via WA (makanya alur selalu diarahkan ke `wa.me` setelah "bayar").
+- **Full-rewrite dari vanilla JS ke React** — alasannya business logic (ongkir Biteship+fallback, QRIS, autocomplete alamat, admin CRUD 4 tab) sudah terlalu banyak untuk dikelola lewat manual DOM manipulation di file 1000+ baris. Vite dipilih (bukan Next.js) supaya tetap static site, tanpa SSR, tanpa backend baru selain Edge Function yang sudah ada — deploy tetap ke Vercel/Netlify seperti biasa, cuma build command-nya berubah dari "tidak ada" jadi `vite build`.
+- **Vite multi-page app (dua entry point), bukan satu SPA + React Router** — customer dan admin nyaris tidak share UI (cuma shell modal/button generik), dan auth model-nya beda total. Dua entry terpisah bikin bundle lebih kecil (admin gak pernah download kode checkout/QRIS, customer gak pernah download kode dashboard) dan URL structure-nya persis kayak dulu (`/` dan `/admin/`), tanpa perlu routing library.
+- **State management: `useReducer` + Context, bukan Zustand/Redux** — state customer (cart, orderType, promo, shipping, profile) itu banyak tapi gak kompleks (gak ada server-cache invalidation, gak ada butuh time-travel debugging), cukup satu `CartContext` per app-lifetime. Admin malah gak butuh state global sama sekali — tiap tab (`ProductsTab`, `PromoTab`, dst) punya state lokal sendiri-sendiri, cuma `AuthContext` yang global.
+- **CSS tidak ditulis ulang** — 3 file CSS lama (`main.css`/`catalog.css`/`admin.css`, total ~2900 baris) di-import apa adanya sebagai global stylesheet, semua class name JSX match 1:1 sama markup lama. Rewrite ke CSS Modules/Tailwind cuma nambah risiko di rewrite yang sudah besar, tanpa manfaat fungsional — tujuan rewrite ini JS-nya, bukan tampilannya.
+- **Client-side by default, backend hanya kalau benar-benar wajib.** QRIS dan promo sengaja dibuat client-side supaya tidak ada biaya API per-transaksi. Ongkir jadi pengecualian: Biteship butuh secret key yang tidak bisa dibatasi per-domain, jadi **wajib** proxy — itu alasan Edge Function `check-shipping` ada. Kode React di rewrite ini **cuma punya satu jalur** (Edge Function) — jalur testing "panggil Biteship langsung dari browser" yang sempat ada di versi vanilla (`checkBiteshipRatesDirect`, `BITESHIP_TEST_API_KEY`) sengaja **tidak diikutkan** saat rewrite, karena itu situasi transisi sementara, bukan pola yang mau dipertahankan.
+- **Debounced single-ongkir-check-on-save dipertahankan ketat** — `useShipping().calculate()` cuma pernah dipanggil dari satu tempat (`ProfileModal`'s save handler), bukan dari `useEffect` yang watch perubahan alamat/koordinat. Godaan paling gampang pas port ke React adalah nulis `useEffect(() => { calculate(...) }, [address])` yang kelihatan lebih "React-idiomatic" — itu salah, karena bakal manggil Biteship berkali-kali tiap customer ngetik/ganti alamat. Kalau nanti refactor bagian ini, pertahankan kontrak "sekali pas Simpan" itu.
+- **Ongkir dicoba Biteship dulu (real-time, akurat per kurir), baru fallback ke Haversine + tarif flat per tier** kalau Biteship/Edge Function gagal. Percobaan integrasi Biteship yang lebih awal (lihat git history sebelum rewrite React) sempat beberapa kali direvert karena API key-nya ditaruh langsung di kode frontend — pola itu tidak dipakai lagi.
+- **Maps hanya link share statis**, bukan Maps JavaScript API — supaya tidak kena biaya Google Maps API.
+- **LocationIQ dipakai khusus untuk autocomplete alamat** (bukan hitung jarak) — tier gratisnya cukup untuk skala UMKM. Sempat dicoba diganti ke GrabMaps (via Amazon Location Service) karena dikira datanya lebih akurat untuk Indonesia, tapi dibalikin lagi — datanya LocationIQ ternyata sudah cukup lengkap, masalahnya cuma di list autocomplete yang tidak selalu muncul (bukan masalah kelengkapan data).
+- **QRIS statis → dinamis dilakukan di browser**, bukan lewat payment gateway (Midtrans/Xendit dkk) — supaya tidak ada biaya transaksi. Trade-off: tidak ada konfirmasi pembayaran otomatis, admin harus verifikasi manual dari bukti transfer yang dikirim via WA.
 - **Ongkir kalkulasi ditaruh di luar modal profil** (bukan di dalamnya) — permintaan eksplisit supaya customer tetap lihat estimasi ongkir sambil isi data di halaman utama, modal profil murni untuk data diri + alamat.
-- **`orders` RLS insert-only untuk anon** — customer tidak pernah butuh SELECT dari tabel ini (semua state pesanan di-track di JS memory sampai konfirmasi), jadi tidak dibuka read access sama sekali demi privasi data pelanggan lain.
+- **`orders` RLS insert-only untuk anon** — customer tidak pernah butuh SELECT dari tabel ini (semua state pesanan di-track di React state sampai konfirmasi), jadi tidak dibuka read access sama sekali demi privasi data pelanggan lain.
