@@ -104,7 +104,7 @@ export default function SettingsTab() {
               onFileSelect={setLogoFile}
               onRemove={() => { setLogoFile(null); setExistingLogoUrl(null); }}
               maxSizeMB={2}
-              hint="PNG, JPG, WEBP, SVG — Maks 2 MB"
+              hint="PNG, JPG, WEBP, SVG — Maks 2 MB, disarankan persegi & transparan (contoh 200×200px)"
             />
           </div>
         </div>
@@ -135,7 +135,7 @@ export default function SettingsTab() {
               onFileSelect={setBannerImageFile}
               onRemove={() => { setBannerImageFile(null); setExistingBannerImageUrl(null); }}
               maxSizeMB={5}
-              hint="PNG, JPG, WEBP — Maks 5 MB"
+              hint="PNG, JPG, WEBP — Maks 5 MB, disarankan lanskap (contoh 1200×400px)"
             />
             <p className="form-hint">Tampil sebagai foto background di banner katalog</p>
           </div>

@@ -2,10 +2,10 @@ import { useMemo } from 'react';
 import { useOrders } from '../../shared/hooks/useOrders.js';
 import { formatPrice } from '../../shared/lib/format.js';
 
-// Orders that represent an actual placed order (QRIS already generated) —
-// cancelled orders are excluded from revenue, matching what an admin would
-// consider "real" sales.
-const REVENUE_STATUSES = ['pending', 'confirmed', 'done'];
+// Only orders admin has verified as paid count as revenue. `pending` means the
+// customer generated a QRIS but the transfer proof hasn't been checked yet —
+// counting it would overstate revenue with orders that might never get confirmed.
+const REVENUE_STATUSES = ['confirmed', 'done'];
 
 function isSameDay(isoString, ref) {
   const d = new Date(isoString);
