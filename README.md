@@ -277,7 +277,14 @@ Kalau Edge Function belum dideploy, atau Biteship gagal (API down, area tidak te
 3. Tambahkan env var yang sama di **Site Settings → Environment Variables**
 4. Klik **Deploy site**
 
-> Dashboard admin ada di `/admin/` (bukan lagi `/admin.html`) — kalau `/admin/` tidak resolve otomatis di hosting kamu, tambah satu baris rewrite (`vercel.json` / `netlify.toml`) yang mengarahkan `/admin` ke `/admin/index.html`.
+**Alternatif Cloudflare Pages:**
+1. [pages.cloudflare.com](https://pages.cloudflare.com) → **Create a project** → **Connect to Git** → pilih repo ini
+2. **Build command**: `npm run build`, **Build output directory**: `dist`
+3. Tambahkan env var yang sama di **Settings → Environment variables** (untuk Production & Preview)
+4. Kalau build gagal karena versi Node terlalu lama, tambah env var `NODE_VERSION` = `20`
+5. Klik **Save and Deploy**
+
+> Dashboard admin ada di `/admin/` (bukan lagi `/admin.html`) — ketiga platform di atas otomatis resolve `dist/admin/index.html` ke path `/admin/` (directory index resolution bawaan), jadi biasanya langsung jalan tanpa rewrite tambahan. Kalau ternyata 404, tambah satu baris rewrite (`vercel.json`/`netlify.toml`/`_redirects` tergantung platform) yang mengarahkan `/admin` ke `/admin/index.html`.
 
 ---
 
