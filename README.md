@@ -4,7 +4,7 @@ Website e-commerce sederhana untuk brand kopi Breva. Stack: HTML + CSS + Vanilla
 
 **Fitur utama:**
 - Katalog produk dengan varian (ukuran, suhu, dll) dan badge (New/Terlaris)
-- Checkout Pickup & Delivery, dengan alamat autocomplete (LocationIQ) dan ongkir otomatis berdasarkan jarak dari toko
+- Checkout Pickup & Delivery, dengan alamat autocomplete (GrabMaps via Amazon Location Service) dan ongkir otomatis berdasarkan jarak dari toko
 - Kode promo (persen / nominal, minimum order, tanggal expired)
 - Pembayaran QRIS dinamis — nominal digenerate langsung di browser dari QRIS statis toko, tanpa payment gateway/API berbayar
 - Konfirmasi pesanan otomatis terkirim ke WhatsApp admin, tersimpan di database sebagai status `pending`
@@ -197,9 +197,11 @@ const STORE_NAME     = 'Breva Coffee';
 const STORE_ADDRESS  = 'Jl. Contoh No.1, Kota...';
 const STORE_MAPS_URL = 'https://maps.google.com/...';   // link share Google Maps, bukan API
 
-// Autocomplete alamat pengiriman (LocationIQ, gratis untuk skala UMKM)
-// Daftar di https://locationiq.com untuk dapat API key
-const LOCATIONIQ_KEY = 'pk.xxxxxxxxxxxxxxxxxxxx';
+// Autocomplete alamat pengiriman — GrabMaps via Amazon Location Service Places API
+// Buat API key di AWS Console > Location Service > API keys, centang action
+// SearchText/Suggest/GetPlace/ReverseGeocode, batasi "Allowed referrers" ke domain sendiri
+const AWS_PLACES_API_KEY = 'v1.public.xxxxxxxxxxxxxxxxxxxx';
+const AWS_PLACES_REGION  = 'ap-southeast-1';   // region yang didukung GrabMaps sebagai data provider
 
 // Koordinat toko — dipakai untuk hitung ongkir berdasarkan jarak (rumus Haversine, tanpa API berbayar)
 const STORE_LAT = -6.2308;
@@ -240,7 +242,7 @@ brevacoffee/
 │   ├── catalog.css    ← Style halaman katalog, checkout, QRIS, profile sheet
 │   └── admin.css       ← Style dashboard admin
 ├── js/
-│   ├── config.js       ← ⚠️ Edit ini dulu! Supabase, WA admin, toko, LocationIQ, QRIS
+│   ├── config.js       ← ⚠️ Edit ini dulu! Supabase, WA admin, toko, GrabMaps, QRIS
 │   ├── catalog.js       ← Logic katalog, keranjang, ongkir, promo, checkout, pembayaran QRIS
 │   └── admin.js         ← Logic login, CRUD produk/promo, pengaturan, kelola pesanan
 └── README.md
@@ -252,7 +254,7 @@ brevacoffee/
 
 1. Pilih produk & varian di katalog → masuk keranjang
 2. Pilih tipe pesanan: **Pickup** (ambil di toko) atau **Delivery**
-3. Kalau Delivery: isi profil (nama, WhatsApp) lewat kartu profil yang membuka bottom sheet — alamat diisi dengan autocomplete LocationIQ, plus catatan alamat opsional
+3. Kalau Delivery: isi profil (nama, WhatsApp) lewat kartu profil yang membuka bottom sheet — alamat diisi dengan autocomplete GrabMaps, plus catatan alamat opsional
 4. Ongkir dihitung otomatis berdasarkan jarak alamat ke toko (tidak ada biaya API tambahan)
 5. Bisa pakai kode promo (persen/nominal, dicek minimum order & masa berlaku)
 6. Konfirmasi pesanan → QRIS dinamis digenerate langsung di browser sesuai total akhir, bisa disimpan sebagai gambar (tombol "Simpan QR")
@@ -301,5 +303,5 @@ Contoh: `08123456789` → tulis `628123456789`
   - Promo: publik hanya baca kode yang `is_active = true`; kelola penuh hanya admin.
   - Settings: publik boleh baca (untuk tampilan katalog); ubah hanya admin.
   - Orders: publik **hanya bisa membuat** pesanan (insert), **tidak bisa membaca** pesanan siapapun — mencegah kebocoran data pelanggan lain. Baca/ubah status hanya admin login.
-- LocationIQ API key di kode frontend juga normal (tier gratis, dipakai untuk autocomplete alamat saja) — kalau mau lebih aman, batasi domain yang boleh pakai key tersebut di dashboard LocationIQ.
+- AWS Places API key di kode frontend juga normal — keamanannya dijaga lewat "Allowed referrers" (client restriction) yang dibatasi ke domain sendiri, dan scope action-nya cuma `SearchText`/`Suggest`/`GetPlace`/`ReverseGeocode` (least privilege, tidak bisa dipakai buat resource AWS lain).
 - Jangan pernah taruh **Service Role key** Supabase di kode frontend.

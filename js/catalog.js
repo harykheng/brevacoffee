@@ -22,7 +22,7 @@ let activePromo = null;         // { code, discount_type, discount_value, min_or
 // delivery state
 let _deliveryLat      = null;
 let _deliveryLng      = null;
-let _acResults        = [];   // LocationIQ autocomplete results
+let _acResults        = [];   // GrabMaps (AWS Places) autocomplete results
 let _selectedShipping = null; // { price, label } | null
 
 // ---- HELPERS ----
@@ -658,7 +658,7 @@ function removePromo() {
 }
 
 // ================================================================
-// LOCATIONIQ AUTOCOMPLETE — delivery address
+// GRABMAPS AUTOCOMPLETE (Amazon Location Service Places API) — delivery address
 // ================================================================
 
 let _acTimer = null;
@@ -677,13 +677,27 @@ function onAddressInput(textarea) {
   _acTimer = setTimeout(() => fetchAddressSuggestions(q), 350);
 }
 
+async function searchPlacesText(q, maxResults) {
+  const url = `https://places.geo.${AWS_PLACES_REGION}.amazonaws.com/v2/search-text?key=${AWS_PLACES_API_KEY}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      QueryText: q,
+      MaxResults: maxResults,
+      Language: 'id',
+      Filter: { IncludeCountries: ['IDN'] },
+      BiasPosition: [STORE_LNG, STORE_LAT],
+    }),
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.ResultItems || [];
+}
+
 async function fetchAddressSuggestions(q) {
   try {
-    const url = `https://api.locationiq.com/v1/autocomplete?key=${LOCATIONIQ_KEY}&q=${encodeURIComponent(q)}&limit=5&dedupe=1&accept-language=id&countrycodes=id`;
-    const res  = await fetch(url);
-    if (!res.ok) return;
-    const data = await res.json();
-    renderAddressSuggestions(data);
+    renderAddressSuggestions(await searchPlacesText(q, 5));
   } catch { /* silent — user can still type manually */ }
 }
 
@@ -693,7 +707,7 @@ function renderAddressSuggestions(results) {
   if (!_acResults.length) { hideAddressSuggestions(); return; }
 
   box.innerHTML = _acResults.map((r, i) => {
-    const label = escapeHTML(r.display_name || r.display_place || '');
+    const label = escapeHTML(r.Address?.Label || '');
     return `<div class="address-suggestion-item" onmousedown="selectAddressSuggestion(${i})">${label}</div>`;
   }).join('');
   box.style.display = 'block';
@@ -703,9 +717,9 @@ function selectAddressSuggestion(index) {
   const r = _acResults[index];
   if (!r) return;
   const textarea   = document.getElementById('customerAddress');
-  textarea.value   = r.display_name || r.display_place || '';
-  _deliveryLat     = parseFloat(r.lat);
-  _deliveryLng     = parseFloat(r.lon);
+  textarea.value   = r.Address?.Label || '';
+  _deliveryLat     = r.Position?.[1];
+  _deliveryLng     = r.Position?.[0];
   hideAddressSuggestions();
   textarea.focus();
   autoCalcShipping();
@@ -727,15 +741,12 @@ async function onAddressBlur(textarea) {
     autoCalcShipping();
     return;
   }
-  // Geocode manually-typed address via LocationIQ
+  // Geocode manually-typed address via GrabMaps
   try {
-    const url  = `https://api.locationiq.com/v1/search?key=${LOCATIONIQ_KEY}&q=${encodeURIComponent(q)}&limit=1&format=json&countrycodes=id&accept-language=id`;
-    const res  = await fetch(url);
-    if (!res.ok) return;
-    const data = await res.json();
-    if (!data?.length) return;
-    _deliveryLat = parseFloat(data[0].lat);
-    _deliveryLng = parseFloat(data[0].lon);
+    const results = await searchPlacesText(q, 1);
+    if (!results.length) return;
+    _deliveryLat = results[0].Position?.[1];
+    _deliveryLng = results[0].Position?.[0];
     autoCalcShipping();
   } catch { /* silent — user can still proceed without ongkir */ }
 }

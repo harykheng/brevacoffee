@@ -12,7 +12,7 @@ Untuk setup/deploy/schema SQL, lihat `README.md`. File ini fokus menjelaskan **c
 |---|---|
 | `index.html` | Halaman customer: katalog, keranjang, checkout, modal QRIS, modal profil, ringkasan pesanan |
 | `admin.html` | Dashboard admin: login, tab Produk/Promo/Pesanan/Pengaturan, modal form & detail |
-| `js/config.js` | Semua konstanta yang wajib diedit per-toko (Supabase, WA, LocationIQ, koordinat, QRIS statis) |
+| `js/config.js` | Semua konstanta yang wajib diedit per-toko (Supabase, WA, AWS Places/GrabMaps, koordinat, QRIS statis) |
 | `js/catalog.js` | Seluruh logic customer-facing (~1300 baris) |
 | `js/admin.js` | Seluruh logic admin-facing (~1130 baris) |
 | `css/main.css` | Style bersama (variabel warna, font, modal generik) |
@@ -36,7 +36,7 @@ Tidak ada build step — edit langsung, refresh browser.
 
 ### Step 3 — Checkout (`renderCheckoutStep`)
 - **Kartu Profil** (`profileCard`): tap untuk buka bottom sheet (`openProfileModal`) berisi nama, WA, dan — kalau delivery — alamat + catatan alamat. Disimpan ke UI state via `saveProfile()` (tidak langsung ke DB, baru di-submit saat checkout).
-- **Alamat**: autocomplete pakai LocationIQ (`onAddressInput` → debounce → `fetchAddressSuggestions` → `renderAddressSuggestions`). Pilih saran → `selectAddressSuggestion` set `_deliveryLat`/`_deliveryLng` dan trigger `autoCalcShipping()`.
+- **Alamat**: autocomplete pakai GrabMaps lewat Amazon Location Service Places API v2 (`onAddressInput` → debounce → `fetchAddressSuggestions` → `searchPlacesText` POST ke `/v2/search-text` → `renderAddressSuggestions`). Pilih saran → `selectAddressSuggestion` set `_deliveryLat`/`_deliveryLng` dari `Position` (`[lng, lat]`, urutan kebalik dari lat/lng biasa) dan trigger `autoCalcShipping()`. Auth pakai API key yang dibatasi "Allowed referrers" ke domain sendiri di AWS console (bukan Cognito) — jadi aman ditaruh langsung di `config.js` tanpa proxy backend.
 - **Ongkir**: dihitung **tanpa API**, murni matematis:
   - `haversineDistance()` — jarak garis lurus toko ↔ alamat customer (pakai `STORE_LAT`/`STORE_LNG` dari config).
   - `calcShippingRate(km)` — tarif flat per tier jarak: ≤3km = Rp8.000, ≤6km = Rp15.000, ≤10km = Rp22.000, >10km = di luar jangkauan (ongkir `null`, tombol checkout diblokir).
@@ -99,7 +99,7 @@ Form tunggal yang upsert ke tabel `settings` (row `id = 1`): nama/ikon/logo bran
 - **Tidak ada backend server.** Semua kalkulasi (ongkir, QRIS) sengaja dibuat client-side supaya tidak ada biaya API per-transaksi. Konsekuensi: kalau nanti mau integrasi API berbayar yang butuh secret key (mis. Biteship untuk ongkir real, payment gateway resmi), **wajib** tambah proxy layer (Supabase Edge Function) — jangan taruh secret key di JS frontend.
 - **Ongkir = Haversine + tarif flat per tier**, bukan API. Sengaja, karena toko hanya melayani radius terbatas (≤10km) dan tidak butuh akurasi rute jalan sungguhan.
 - **Maps hanya link share statis** (`STORE_MAPS_URL`), bukan Maps JavaScript API — supaya tidak kena biaya Google Maps API.
-- **LocationIQ dipakai khusus untuk autocomplete alamat** (bukan hitung jarak) — tier gratisnya cukup untuk skala UMKM.
+- **GrabMaps (via Amazon Location Service) dipakai khusus untuk autocomplete alamat** (bukan hitung jarak) — dipilih setelah LocationIQ (berbasis data OpenStreetMap) terbukti kurang akurat/update untuk alamat Indonesia. GrabMaps datanya dikumpulkan langsung oleh mitra Grab di lapangan, khusus SEA. Diakses lewat AWS Places API v2 (region `ap-southeast-1`, provider GrabMaps otomatis aktif di region ini) — bukan resource "Place Index" lama (legacy), dan bukan lewat Cognito Identity Pool, tapi API key native yang dibatasi per-domain (`Allowed referrers`) + per-action, jadi aman dipanggil langsung dari browser tanpa proxy. Konsekuensi: free tier AWS ada batas waktu (beda dari LocationIQ yang gratis terus-menerus), jadi setelah kuota/masa gratis habis akan mulai kena biaya per-request.
 - **QRIS statis → dinamis dilakukan di browser** (`qrisToDynamic`), bukan lewat payment gateway (Midtrans/Xendit dkk) — supaya tidak ada biaya transaksi. Trade-off: tidak ada konfirmasi pembayaran otomatis, admin harus verifikasi manual dari bukti transfer yang dikirim via WA (makanya alur selalu diarahkan ke `wa.me` setelah "bayar").
 - **Ongkir kalkulasi ditaruh di luar modal profil** (bukan di dalamnya) — permintaan eksplisit supaya customer tetap lihat estimasi ongkir sambil isi data di halaman utama, modal profil murni untuk data diri + alamat.
 - **`orders` RLS insert-only untuk anon** — customer tidak pernah butuh SELECT dari tabel ini (semua state pesanan di-track di JS memory sampai konfirmasi), jadi tidak dibuka read access sama sekali demi privasi data pelanggan lain.
