@@ -277,12 +277,17 @@ Kalau Edge Function belum dideploy, atau Biteship gagal (API down, area tidak te
 3. Tambahkan env var yang sama di **Site Settings → Environment Variables**
 4. Klik **Deploy site**
 
-**Alternatif Cloudflare Pages:**
-1. [pages.cloudflare.com](https://pages.cloudflare.com) → **Create a project** → **Connect to Git** → pilih repo ini
-2. **Build command**: `npm run build`, **Build output directory**: `dist`
+**Alternatif Cloudflare:**
+
+Dashboard Cloudflare sekarang menggabungkan flow "Pages" ke dalam "Workers" (`Create application` → `Continue with GitHub`, bukan lagi form Pages terpisah). Karena itu, repo ini sudah menyertakan `wrangler.jsonc` yang mendeklarasikan deploy sebagai **static assets saja** (tanpa Worker script sama sekali) — supaya Wrangler langsung tahu cara deploy-nya, tanpa perlu coba "menebak" lewat parsing `vite.config.js` (yang bisa gagal, lihat catatan di bawah).
+
+1. Cloudflare dashboard → **Workers & Pages** → **Create application** → **Continue with GitHub** → pilih repo ini
+2. **Build command**: `npm run build` (Deploy command boleh dibiarkan default `npx wrangler deploy` — akan otomatis baca `wrangler.jsonc`)
 3. Tambahkan env var yang sama di **Settings → Environment variables** (untuk Production & Preview)
 4. Kalau build gagal karena versi Node terlalu lama, tambah env var `NODE_VERSION` = `20`
-5. Klik **Save and Deploy**
+5. Klik **Deploy**
+
+> Kalau di dashboard kamu masih ada opsi **Pages** terpisah (link "Looking to deploy Pages? Get started"), itu juga bisa dipakai — sama-sama cuma build lalu upload folder `dist/` sebagai file statis, dan malah lebih simpel karena gak pernah nyentuh `wrangler.jsonc` sama sekali.
 
 > Dashboard admin ada di `/admin/` (bukan lagi `/admin.html`) — ketiga platform di atas otomatis resolve `dist/admin/index.html` ke path `/admin/` (directory index resolution bawaan), jadi biasanya langsung jalan tanpa rewrite tambahan. Kalau ternyata 404, tambah satu baris rewrite (`vercel.json`/`netlify.toml`/`_redirects` tergantung platform) yang mengarahkan `/admin` ke `/admin/index.html`.
 
