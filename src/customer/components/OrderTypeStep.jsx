@@ -43,7 +43,7 @@ export default function OrderTypeStep({ settings }) {
         <div className="ob-topbar">
           <div className="ob-brand">
             {logoUrl ? (
-              <img className="ob-brand-icon" src={logoUrl} alt={brandName} />
+              <img className="ob-brand-icon brand-icon-logo" src={logoUrl} alt={brandName} />
             ) : (
               <span className="ob-brand-icon">{brandIcon}</span>
             )}
