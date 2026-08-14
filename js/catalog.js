@@ -741,8 +741,11 @@ async function onAddressBlur(textarea) {
 }
 
 // ================================================================
-// STATIC ONGKIR — distance-based flat rate
+// ONGKIR — Biteship real-time rates (GoSend/GrabExpress), fallback ke
+// tarif flat berbasis jarak (Haversine) kalau Edge Function gagal/kosong
 // ================================================================
+
+let _ongkirOptions = []; // hasil terakhir dari Biteship, dipakai selectOngkirOption()
 
 function haversineDistance(lat1, lng1, lat2, lng2) {
   const R    = 6371;
@@ -761,10 +764,7 @@ function calcShippingRate(km) {
   return null; // di luar jangkauan
 }
 
-function autoCalcShipping() {
-  const box = document.getElementById('ongkirOptions');
-  if (!box || !_deliveryLat || !_deliveryLng) return;
-
+function renderStaticFallbackShipping(box) {
   const km    = haversineDistance(STORE_LAT, STORE_LNG, _deliveryLat, _deliveryLng);
   const price = calcShippingRate(km);
 
@@ -794,6 +794,100 @@ function autoCalcShipping() {
     </div>`;
 
   renderCheckoutTotals();
+}
+
+function renderOngkirOptions(options) {
+  const box = document.getElementById('ongkirOptions');
+  _ongkirOptions = options;
+
+  box.innerHTML = `<div class="ongkir-options-list">${options.map((o, i) => `
+    <div class="ongkir-option-item${i === 0 ? ' selected' : ''}" onclick="selectOngkirOption(${i})">
+      <div class="ongkir-left">
+        <div class="ongkir-courier">${escapeHTML(o.courierName)} — ${escapeHTML(o.serviceName)}</div>
+        <div class="ongkir-eta">${escapeHTML(o.duration || '')}</div>
+      </div>
+      <div class="ongkir-price">${formatPrice(o.price)}</div>
+    </div>`).join('')}</div>`;
+
+  selectOngkirOption(0);
+}
+
+function selectOngkirOption(index) {
+  const o = _ongkirOptions[index];
+  if (!o) return;
+  _selectedShipping = { price: o.price, label: `${o.courierName} - ${o.serviceName}` };
+
+  document.querySelectorAll('.ongkir-option-item').forEach((el, i) => {
+    el.classList.toggle('selected', i === index);
+  });
+  renderCheckoutTotals();
+}
+
+// ⚠️ SEMENTARA — TESTING ONLY, panggil Biteship langsung dari browser pakai
+// BITESHIP_TEST_API_KEY (config.js). WAJIB diganti ke checkBiteshipRatesViaEdgeFunction()
+// di bawah sebelum pakai key `biteship_live_...` — lihat README §3.
+async function checkBiteshipRatesDirect(weightGrams, orderValue) {
+  const res = await fetch('https://api.biteship.com/v1/rates/couriers', {
+    method: 'POST',
+    headers: {
+      authorization: BITESHIP_TEST_API_KEY,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      origin_latitude: STORE_LAT,
+      origin_longitude: STORE_LNG,
+      destination_latitude: _deliveryLat,
+      destination_longitude: _deliveryLng,
+      couriers: 'gosend,grab',
+      items: [{
+        name: 'Pesanan Breva Coffee',
+        description: 'Minuman & makanan',
+        value: orderValue || 10000,
+        weight: weightGrams || 300,
+        quantity: 1,
+      }],
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok || !Array.isArray(data.pricing)) throw new Error(data?.error || 'no rates');
+  return data.pricing.map(p => ({
+    courierCode:   p.courier_code,
+    courierName:   p.courier_name,
+    serviceName:   p.courier_service_name,
+    price:         p.price,
+    duration:      p.duration,
+  }));
+}
+
+// Jalur produksi (aman) — pakai Edge Function biar BITESHIP_API_KEY asli tidak
+// pernah nempel di browser. Ganti pemanggilnya di autoCalcShipping() ke fungsi
+// ini begitu Edge Function sudah dideploy.
+async function checkBiteshipRatesViaEdgeFunction(weightGrams, orderValue) {
+  const { data, error } = await supabaseClient.functions.invoke('check-shipping', {
+    body: {
+      originLat: STORE_LAT, originLng: STORE_LNG,
+      destLat: _deliveryLat, destLng: _deliveryLng,
+      weightGrams, orderValue,
+    },
+  });
+  if (error || !data?.options?.length) throw new Error('no rates');
+  return data.options;
+}
+
+async function autoCalcShipping() {
+  const box = document.getElementById('ongkirOptions');
+  if (!box || !_deliveryLat || !_deliveryLng) return;
+
+  box.innerHTML = `<div class="ongkir-loading"><span class="spinner-sm"></span> Mengecek ongkir…</div>`;
+
+  try {
+    const weightGrams = cartCount() * DEFAULT_ITEM_WEIGHT_G;
+    const options = await checkBiteshipRatesDirect(weightGrams, cartTotal());
+    renderOngkirOptions(options);
+  } catch {
+    // Biteship gagal / tidak ada kurir ke lokasi ini — fallback ke tarif jarak statis
+    renderStaticFallbackShipping(box);
+  }
 }
 
 async function submitOrder() {
