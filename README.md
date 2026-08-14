@@ -1,6 +1,8 @@
 # Breva Coffee — Setup Guide
 
-Website e-commerce sederhana untuk brand kopi Breva. Stack: HTML + CSS + Vanilla JS, Supabase (database + auth + storage), deploy ke Vercel/Netlify. Hampir semua logic (QRIS, promo, dsb) jalan di browser tanpa backend server — satu-satunya pengecualian adalah cek ongkir real-time, yang lewat 1 Supabase Edge Function kecil karena butuh menyembunyikan API key Biteship.
+Website e-commerce untuk brand kopi Breva. Stack: **React + Vite**, Supabase (database + auth + storage), deploy ke Vercel/Netlify. Hampir semua logic (QRIS, promo, dsb) jalan di browser tanpa backend server — satu-satunya pengecualian adalah cek ongkir real-time, yang lewat 1 Supabase Edge Function kecil karena butuh menyembunyikan API key Biteship.
+
+Dua aplikasi React terpisah dalam satu repo (Vite multi-page app): katalog customer di `/`, dashboard admin di `/admin/`. Masing-masing punya bundle sendiri — customer tidak pernah men-download kode dashboard admin dan sebaliknya.
 
 **Fitur utama:**
 - Katalog produk dengan varian (ukuran, suhu, dll) dan badge (New/Terlaris)
@@ -184,45 +186,61 @@ CREATE POLICY "Admin delete images"
 
 ## 2. Konfigurasi Website
 
-Buka file `js/config.js` dan sesuaikan:
+Install dependencies dan siapkan environment variables:
 
-```javascript
-// Wajib diisi
-const SUPABASE_URL      = 'https://XXXXXXXXXXXXXXXX.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGci...';
-const ADMIN_WHATSAPP    = '6281234567890';   // format: 62 + nomor tanpa angka 0 di depan
+```bash
+npm install
+cp .env.example .env
+```
 
-// Default brand/toko — bisa dioverride dari Admin > Pengaturan setelah tabel `settings` dibuat
-const STORE_NAME     = 'Breva Coffee';
-const STORE_ADDRESS  = 'Jl. Contoh No.1, Kota...';
-const STORE_MAPS_URL = 'https://maps.google.com/...';   // link share Google Maps, bukan API
+Buka file `.env` dan sesuaikan:
 
-// Autocomplete alamat pengiriman (LocationIQ, gratis untuk skala UMKM)
-// Daftar di https://locationiq.com untuk dapat API key
-const LOCATIONIQ_KEY = 'pk.xxxxxxxxxxxxxxxxxxxx';
+```bash
+# Wajib diisi
+VITE_SUPABASE_URL=https://XXXXXXXXXXXXXXXX.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGci...
+VITE_ADMIN_WHATSAPP=6281234567890   # format: 62 + nomor tanpa angka 0 di depan
 
-// Koordinat toko — dipakai sebagai titik asal pengecekan ongkir, dan fallback
-// tarif jarak statis (Haversine) kalau Biteship gagal/tidak tersedia
-const STORE_LAT = -6.2308;
-const STORE_LNG = 106.6480;
+# Default brand/toko — bisa dioverride dari Admin > Pengaturan setelah tabel `settings` dibuat
+VITE_STORE_NAME=Breva Coffee
+VITE_STORE_ADDRESS=Jl. Contoh No.1, Kota...
+VITE_STORE_MAPS_URL=https://maps.google.com/...   # link share Google Maps, bukan API
+VITE_STORE_OPEN_HOURS=Senin – Minggu, 08.00 – 21.00 WIB
+VITE_BANNER_TITLE=Ada yang baru nih! ✨
+VITE_BANNER_SUBTITLE=Cek semua menu terbaru Breva Coffee
+VITE_INSTAGRAM_URL=https://instagram.com/tokomu
+VITE_TIKTOK_URL=https://tiktok.com/@tokomu
 
-// Estimasi berat per item (gram) untuk hitung ongkir Biteship — produk di sini
-// tidak nyimpen berat per-produk, jadi dipakai angka rata-rata per pesanan
-const DEFAULT_ITEM_WEIGHT_G = 300;
+# Autocomplete alamat pengiriman (LocationIQ, gratis untuk skala UMKM)
+# Daftar di https://locationiq.com untuk dapat API key
+VITE_LOCATIONIQ_KEY=pk.xxxxxxxxxxxxxxxxxxxx
 
-// QRIS statis merchant — dari bank/GoPay/OVO/QRIS toko, biasanya di stiker QRIS fisik.
-// Nominal dinamis digenerate otomatis di browser saat checkout, tidak butuh payment gateway.
-const QRIS_STATIC = '00020101021126610014COM...';
+# Koordinat toko — dipakai sebagai titik asal pengecekan ongkir, dan fallback
+# tarif jarak statis (Haversine) kalau Biteship gagal/tidak tersedia
+VITE_STORE_LAT=-6.2308
+VITE_STORE_LNG=106.6480
+
+# Estimasi berat per item (gram) untuk hitung ongkir Biteship — produk di sini
+# tidak nyimpen berat per-produk, jadi dipakai angka rata-rata per pesanan
+VITE_DEFAULT_ITEM_WEIGHT_G=300
+
+# QRIS statis merchant — dari bank/GoPay/OVO/QRIS toko, biasanya di stiker QRIS fisik.
+# Nominal dinamis digenerate otomatis di browser saat checkout, tidak butuh payment gateway.
+VITE_QRIS_STATIC=00020101021126610014COM...
 ```
 
 **Cara dapat URL & Anon Key Supabase:**
 Supabase Dashboard → **Project Settings** → **API** → salin **Project URL** dan **anon public** key.
 
+Jalankan lokal dengan `npm run dev` (buka `localhost:5173` untuk katalog, `localhost:5173/admin/` untuk dashboard admin).
+
+> Tidak ada `BITESHIP_API_KEY` di `.env` — key Biteship itu secret dan cuma pernah hidup di Supabase secrets (lihat §3), tidak pernah di kode frontend.
+
 ---
 
 ## 3. Setup Ongkir Real-time (Biteship)
 
-Fitur cek ongkir GoSend/GrabExpress pakai [Biteship](https://biteship.com). Berbeda dari key lain di `js/config.js`, **API key Biteship adalah secret** — tidak boleh ditaruh di kode frontend, jadi dipanggil lewat Supabase Edge Function (`supabase/functions/check-shipping`) yang jadi proxy.
+Fitur cek ongkir GoSend/GrabExpress pakai [Biteship](https://biteship.com). Berbeda dari key lain di `.env`, **API key Biteship adalah secret** — tidak boleh ditaruh di kode frontend, jadi dipanggil lewat Supabase Edge Function (`supabase/functions/check-shipping`) yang jadi proxy. Frontend React cuma pernah manggil Edge Function ini, tidak ada jalur "panggil Biteship langsung dari browser" sama sekali di kode — jadi **Edge Function ini wajib dideploy** sebelum ongkir real-time bisa jalan (sebelum itu, otomatis fallback ke tarif jarak statis, checkout tetap jalan normal).
 
 ### Dapatkan API Key Biteship
 1. Daftar/login ke [dashboard.biteship.com](https://dashboard.biteship.com/integrations)
@@ -241,7 +259,7 @@ supabase secrets set BITESHIP_API_KEY=biteship_xxxxxxxxxxxxxxxxxxxx
 Alternatif tanpa CLI: buka Supabase Dashboard → **Edge Functions** → **Deploy a new function**, paste isi `supabase/functions/check-shipping/index.ts`, lalu set secret `BITESHIP_API_KEY` di **Edge Functions → Manage secrets**.
 
 ### Fallback
-Kalau Biteship gagal (API down, area tidak ter-cover kurir, dsb), website otomatis fallback ke tarif jarak statis (Haversine, ≤3km/6km/10km) tanpa mengganggu checkout customer — tidak wajib beres 100% dari awal.
+Kalau Edge Function belum dideploy, atau Biteship gagal (API down, area tidak ter-cover kurir, dsb), otomatis fallback ke tarif jarak statis (Haversine, ≤3km/6km/10km) — jadi tidak wajib setup Biteship dulu sebelum bisa mulai jualan.
 
 ---
 
@@ -249,13 +267,17 @@ Kalau Biteship gagal (API down, area tidak ter-cover kurir, dsb), website otomat
 
 1. Buka [vercel.com](https://vercel.com) → login dengan GitHub
 2. Klik **Add New** → **Project** → pilih repository ini
-3. Biarkan semua setting default (tidak ada build command)
-4. Klik **Deploy** — selesai!
+3. Vercel otomatis detect Vite — **Build Command**: `vite build` (atau `npm run build`), **Output Directory**: `dist`
+4. Tambahkan semua env var dari `.env` di **Project Settings → Environment Variables** (isi yang sama, untuk Production & Preview)
+5. Klik **Deploy** — selesai!
 
 **Alternatif Netlify:**
 1. [netlify.com](https://netlify.com) → **Add new site** → **Import an existing project**
-2. Pilih repo, kosongkan *Build command* dan *Publish directory*
-3. Klik **Deploy site**
+2. Pilih repo, **Build command**: `npm run build`, **Publish directory**: `dist`
+3. Tambahkan env var yang sama di **Site Settings → Environment Variables**
+4. Klik **Deploy site**
+
+> Dashboard admin ada di `/admin/` (bukan lagi `/admin.html`) — kalau `/admin/` tidak resolve otomatis di hosting kamu, tambah satu baris rewrite (`vercel.json` / `netlify.toml`) yang mengarahkan `/admin` ke `/admin/index.html`.
 
 ---
 
@@ -263,21 +285,43 @@ Kalau Biteship gagal (API down, area tidak ter-cover kurir, dsb), website otomat
 
 ```
 brevacoffee/
-├── index.html        ← Halaman katalog publik (customer): produk, keranjang, checkout, QRIS
-├── admin.html         ← Dashboard admin (butuh login): produk, promo, pesanan, pengaturan
+├── index.html                ← Vite entry point aplikasi customer (root div + script module)
+├── admin/
+│   └── index.html            ← Vite entry point aplikasi admin, di-serve di /admin/
+├── src/
+│   ├── customer/              ← Aplikasi React customer-facing
+│   │   ├── main.jsx            ← Render root, import CSS
+│   │   ├── App.jsx             ← CartProvider + step switcher + modal orchestration
+│   │   ├── CartContext.jsx     ← State global order flow (cart, promo, shipping, profile) via useReducer
+│   │   ├── components/         ← OrderTypeStep, CatalogStep, CheckoutStep, ProfileModal,
+│   │   │                          QrisModal, OrderSummaryModal, VariantSheet, dll
+│   │   └── hooks/               ← useShipping (Biteship Edge Function + fallback Haversine)
+│   ├── admin/                  ← Aplikasi React admin dashboard
+│   │   ├── main.jsx
+│   │   ├── App.jsx              ← AuthProvider + tab shell
+│   │   ├── AuthContext.jsx      ← Supabase Auth session state
+│   │   └── components/          ← LoginScreen, ProductsTab/PromoTab/OrdersTab/SettingsTab,
+│   │                               form modals, ImageUploadDropzone, PrintLabel
+│   └── shared/                  ← Dipakai kedua aplikasi
+│       ├── lib/                  ← Pure functions: qris.js (crc16/qrisToDynamic), shipping.js
+│       │                            (Haversine), cart.js, format.js, whatsapp.js, config.js
+│       │                            (baca env var), supabaseClient.js, products/promos/orders/
+│       │                            settings.js (mutation functions)
+│       ├── hooks/                 ← useProducts, usePromos, useOrders, useSettings
+│       └── components/            ← Modal, Toast, ConfirmDialog (shell generik)
 ├── css/
-│   ├── main.css       ← Style bersama (warna, font, animasi, modal umum)
-│   ├── catalog.css    ← Style halaman katalog, checkout, QRIS, profile sheet
-│   └── admin.css       ← Style dashboard admin
-├── js/
-│   ├── config.js       ← ⚠️ Edit ini dulu! Supabase, WA admin, toko, LocationIQ, QRIS
-│   ├── catalog.js       ← Logic katalog, keranjang, ongkir, promo, checkout, pembayaran QRIS
-│   └── admin.js         ← Logic login, CRUD produk/promo, pengaturan, kelola pesanan
+│   ├── main.css                ← Style bersama (warna, font, animasi, modal umum)
+│   ├── catalog.css             ← Style halaman katalog, checkout, QRIS, profile sheet
+│   └── admin.css                ← Style dashboard admin
 ├── supabase/
 │   └── functions/
-│       └── check-shipping/  ← Edge Function proxy Biteship (satu-satunya kode "backend")
+│       └── check-shipping/      ← Edge Function proxy Biteship (satu-satunya kode "backend")
+├── .env.example                 ← Template environment variables (salin ke .env)
+├── vite.config.js                ← Vite config, dua entry (customer + admin)
 └── README.md
 ```
+
+Tidak ada `js/config.js` lagi — semua konstanta per-toko sekarang jadi environment variables (`.env`), dibaca lewat satu tempat di `src/shared/lib/config.js`.
 
 ---
 
@@ -299,7 +343,7 @@ QRIS di sini **tidak ada masa kedaluwarsa** — karena digenerate secara determi
 ## 7. Panduan Admin
 
 ### Akses Dashboard
-Buka: `namawebsite.vercel.app/admin.html` → login dengan email + password.
+Buka: `namawebsite.vercel.app/admin/` → login dengan email + password.
 
 ### Tab Produk
 Klik **+ Tambah Produk** → isi nama, deskripsi, harga, upload foto, atur varian (opsional), badge & visibilitas → **Simpan Produk**.
@@ -320,7 +364,7 @@ Klik **📋 Detail** pada satu pesanan untuk:
 Ubah nama brand, ikon/logo, alamat & jam operasional toko, link Google Maps, banner katalog (judul, subjudul, foto), dan link Instagram/TikTok — semua tersimpan di tabel `settings` dan langsung berlaku di katalog tanpa perlu edit kode.
 
 ### Ganti Nomor WhatsApp Admin
-Ubah `ADMIN_WHATSAPP` di `js/config.js`.
+Ubah `VITE_ADMIN_WHATSAPP` di `.env` (dan di env var hosting kalau sudah deploy), lalu redeploy.
 Format: `62` + nomor tanpa `0` di depan.
 Contoh: `08123456789` → tulis `628123456789`
 
@@ -328,12 +372,12 @@ Contoh: `08123456789` → tulis `628123456789`
 
 ## 8. Catatan Keamanan
 
-- Supabase URL dan anon key ada di kode JS — ini **normal** untuk static site. Anon key hanya boleh baca data publik.
+- Supabase URL dan anon key masuk ke bundle JS lewat `VITE_*` env var — ini **normal** untuk static site (Vite meng-inline nilai `VITE_*` ke kode saat build, jadi tetap terlihat di browser walau sumbernya `.env`). Anon key hanya boleh baca data publik.
 - Row Level Security (RLS) memastikan:
   - Produk: publik hanya baca yang `is_visible = true`; tambah/edit/hapus hanya admin login.
   - Promo: publik hanya baca kode yang `is_active = true`; kelola penuh hanya admin.
   - Settings: publik boleh baca (untuk tampilan katalog); ubah hanya admin.
   - Orders: publik **hanya bisa membuat** pesanan (insert), **tidak bisa membaca** pesanan siapapun — mencegah kebocoran data pelanggan lain. Baca/ubah status hanya admin login.
 - LocationIQ API key di kode frontend juga normal (tier gratis, dipakai untuk autocomplete alamat saja) — kalau mau lebih aman, batasi domain yang boleh pakai key tersebut di dashboard LocationIQ.
-- **Biteship API key BEDA** — ini secret dan tidak punya mekanisme pembatasan domain seperti AWS. **Jangan pernah** taruh di `js/config.js`. Selalu lewat Edge Function `check-shipping` yang menyimpannya sebagai Supabase secret (server-side only, tidak pernah dikirim ke browser).
+- **Biteship API key BEDA** — ini secret dan tidak punya mekanisme pembatasan domain. **Jangan pernah** taruh di `.env` (yang bisa masuk ke bundle frontend). Selalu lewat Edge Function `check-shipping` yang menyimpannya sebagai Supabase secret (server-side only, tidak pernah dikirim ke browser) — kode React tidak punya jalur lain untuk manggil Biteship.
 - Jangan pernah taruh **Service Role key** Supabase di kode frontend.
