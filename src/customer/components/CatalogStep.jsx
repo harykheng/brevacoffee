@@ -41,7 +41,7 @@ export default function CatalogStep({ settings, onPickVariant }) {
         <button className="topbar-back" onClick={goBack} aria-label="Kembali">←</button>
         <div className="topbar-center">
           {logoUrl ? (
-            <img className="topbar-icon" src={logoUrl} alt={brandName} />
+            <img className="topbar-icon brand-icon-logo" src={logoUrl} alt={brandName} />
           ) : (
             <span className="topbar-icon">{brandIcon}</span>
           )}
